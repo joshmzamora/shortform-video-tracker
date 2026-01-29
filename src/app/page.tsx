@@ -24,7 +24,7 @@ export default function Home() {
             <FileText className="mr-2" />
             Consent Form
           </Button>
-          <Button size="lg" variant="outline" disabled>
+          <Button size="lg" variant="outline" onClick={() => router.push('/questionnaire')}>
             <ListChecks className="mr-2" />
             Questionnaire
           </Button>
