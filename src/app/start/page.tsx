@@ -6,14 +6,16 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
-import { ArrowRight } from 'lucide-react';
+import { ArrowRight, Loader2 } from 'lucide-react';
 
 export default function StartPage() {
   const [participantId, setParticipantId] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
   const router = useRouter();
 
   const handleStart = () => {
-    if (participantId.trim()) {
+    if (participantId.trim() && !isLoading) {
+      setIsLoading(true);
       router.push(`/session?participantId=${encodeURIComponent(participantId.trim())}`);
     }
   };
@@ -41,8 +43,17 @@ export default function StartPage() {
           </form>
         </CardContent>
         <CardFooter>
-          <Button className="w-full" onClick={handleStart} disabled={!participantId.trim()}>
-            Start Experiment <ArrowRight className="ml-2" />
+          <Button className="w-full" onClick={handleStart} disabled={!participantId.trim() || isLoading}>
+            {isLoading ? (
+                <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Starting...
+                </>
+            ) : (
+                <>
+                    Start Experiment <ArrowRight className="ml-2" />
+                </>
+            )}
           </Button>
         </CardFooter>
       </Card>

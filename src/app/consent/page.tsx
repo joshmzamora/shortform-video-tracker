@@ -9,6 +9,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Separator } from '@/components/ui/separator';
+import { Loader2 } from 'lucide-react';
 
 export default function ConsentPage() {
   const router = useRouter();
@@ -19,13 +20,15 @@ export default function ConsentPage() {
   const [witnessName, setWitnessName] = useState('');
   const [pocName, setPocName] = useState('');
   const [currentDate, setCurrentDate] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
 
   useEffect(() => {
     setCurrentDate(new Date().toLocaleDateString());
   }, []);
 
   const handleContinue = () => {
-    if (agreed && participantId.trim() && participantName.trim()) {
+    if (agreed && participantId.trim() && participantName.trim() && !isLoading) {
+      setIsLoading(true);
       router.push(`/session?participantId=${encodeURIComponent(participantId.trim())}`);
     }
   };
@@ -161,8 +164,15 @@ export default function ConsentPage() {
           </div>
         </CardContent>
         <CardFooter>
-            <Button className="w-full" onClick={handleContinue} disabled={!canContinue}>
-                I Agree, Continue to Experiment
+            <Button className="w-full" onClick={handleContinue} disabled={!canContinue || isLoading}>
+                {isLoading ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Processing...
+                  </>
+                ) : (
+                  "I Agree, Continue to Experiment"
+                )}
             </Button>
         </CardFooter>
       </Card>
