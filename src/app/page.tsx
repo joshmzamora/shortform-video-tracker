@@ -16,7 +16,7 @@ export default function Home() {
           <CardDescription className="text-center pt-1">Main Menu</CardDescription>
         </CardHeader>
         <CardContent className="flex flex-col gap-4 pt-4">
-          <Button size="lg" onClick={() => router.push('/consent')}>
+          <Button size="lg" onClick={() => router.push('/start')}>
             <PlaySquare className="mr-2" />
             Experiment
           </Button>

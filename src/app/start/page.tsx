@@ -14,7 +14,7 @@ export default function StartPage() {
 
   const handleStart = () => {
     if (participantId.trim()) {
-      router.push(`/consent?participantId=${encodeURIComponent(participantId.trim())}`);
+      router.push(`/session?participantId=${encodeURIComponent(participantId.trim())}`);
     }
   };
 
@@ -42,7 +42,7 @@ export default function StartPage() {
         </CardContent>
         <CardFooter>
           <Button className="w-full" onClick={handleStart} disabled={!participantId.trim()}>
-            Continue to Consent Form <ArrowRight className="ml-2" />
+            Start Experiment <ArrowRight className="ml-2" />
           </Button>
         </CardFooter>
       </Card>
