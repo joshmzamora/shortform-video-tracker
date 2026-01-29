@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from 'react';
-import { useRouter, useSearchParams } from 'next/navigation';
+import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -9,15 +9,12 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Separator } from '@/components/ui/separator';
-import { ArrowLeft } from 'lucide-react';
 
 export default function ConsentPage() {
   const router = useRouter();
-  const searchParams = useSearchParams();
-  const participantId = searchParams.get('participantId');
-  const isExperimentFlow = !!participantId;
   
   const [agreed, setAgreed] = useState(false);
+  const [participantId, setParticipantId] = useState('');
   const [participantName, setParticipantName] = useState('');
   const [witnessName, setWitnessName] = useState('');
   const [pocName, setPocName] = useState('');
@@ -28,12 +25,12 @@ export default function ConsentPage() {
   }, []);
 
   const handleContinue = () => {
-    if (agreed && participantId && participantName.trim()) {
-      router.push(`/session?participantId=${encodeURIComponent(participantId)}`);
+    if (agreed && participantId.trim() && participantName.trim()) {
+      router.push(`/session?participantId=${encodeURIComponent(participantId.trim())}`);
     }
   };
   
-  const canContinue = isExperimentFlow && agreed && participantName.trim() !== '';
+  const canContinue = agreed && participantName.trim() !== '' && participantId.trim() !== '';
 
   return (
     <main className="flex min-h-screen items-center justify-center bg-background p-4 md:p-8">
@@ -104,71 +101,69 @@ export default function ConsentPage() {
               </div>
             </div>
           </ScrollArea>
-          {isExperimentFlow ? (
-            <div className="mt-6 space-y-4">
-              <p>I voluntarily agree to participate in this research program and I understand that I will be given a copy of this signed Consent Form.</p>
-              <div className="flex items-center space-x-4">
+          <div className="mt-6 space-y-4">
+            <p>I voluntarily agree to participate in this research program and I understand that I will be given a copy of this signed Consent Form.</p>
+            <div className="flex items-center space-x-4">
+                <div className="flex items-center space-x-2">
+                    <Checkbox id="consent-yes" checked={agreed} onCheckedChange={(checked) => setAgreed(checked === true)} />
+                    <Label htmlFor="consent-yes">Yes</Label>
+                </div>
                   <div className="flex items-center space-x-2">
-                      <Checkbox id="consent-yes" checked={agreed} onCheckedChange={(checked) => setAgreed(checked === true)} />
-                      <Label htmlFor="consent-yes">Yes</Label>
-                  </div>
-                   <div className="flex items-center space-x-2">
-                      <Checkbox id="consent-no" checked={!agreed} onCheckedChange={(checked) => setAgreed(checked !== true)} />
-                      <Label htmlFor="consent-no">No</Label>
-                  </div>
-              </div>
-
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pt-4">
-                  <div className="space-y-2">
-                      <Label htmlFor="participant-name">Name of Participant (print):</Label>
-                      <Input id="participant-name" value={participantName} onChange={(e) => setParticipantName(e.target.value)} placeholder="John Doe" />
-                      <p className="text-sm text-muted-foreground">Signature: (type name to sign)</p>
-                  </div>
-                   <div className="space-y-2">
-                      <Label>Date:</Label>
-                      <Input value={currentDate} readOnly disabled />
-                  </div>
-                   <div className="space-y-2">
-                      <Label htmlFor="witness-name">Name of Witness (print):</Label>
-                      <Input id="witness-name" value={witnessName} onChange={(e) => setWitnessName(e.target.value)} placeholder="Jane Smith" />
-                      <p className="text-sm text-muted-foreground">Signature: (type name to sign)</p>
-                  </div>
-                   <div className="space-y-2">
-                      <Label>Date:</Label>
-                      <Input value={currentDate} readOnly disabled />
-                  </div>
-                  <div className="space-y-2">
-                      <Label htmlFor="poc-name">Person Obtaining Consent:</Label>
-                      <Input id="poc-name" value={pocName} onChange={(e) => setPocName(e.target.value)} placeholder="Dr. Investigator" />
-                      <p className="text-sm text-muted-foreground">Signature: (type name to sign)</p>
-                  </div>
-                   <div className="space-y-2">
-                      <Label>Date:</Label>
-                      <Input value={currentDate} readOnly disabled />
-                  </div>
-              </div>
-
-               <p className="text-xs text-muted-foreground pt-4">
-                  Note: A copy of the signed, dated consent form must be kept by the Principle Investigator(s) and a copy must be given to the participant.
-               </p>
+                    <Checkbox id="consent-no" checked={!agreed} onCheckedChange={(checked) => setAgreed(checked !== true)} />
+                    <Label htmlFor="consent-no">No</Label>
+                </div>
             </div>
-          ) : (
-            <div className="mt-6 text-center text-muted-foreground">
-                <p>This is a preview of the consent form. To participate in the experiment, please start from the main menu.</p>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pt-4">
+                <div className="space-y-2 md:col-span-2">
+                    <Label htmlFor="participantId">Participant ID</Label>
+                    <Input
+                      id="participantId"
+                      placeholder="e.g., user_001"
+                      value={participantId}
+                      onChange={(e) => setParticipantId(e.target.value)}
+                      autoFocus
+                      required
+                    />
+                </div>
+                <div className="space-y-2">
+                    <Label htmlFor="participant-name">Name of Participant (print):</Label>
+                    <Input id="participant-name" value={participantName} onChange={(e) => setParticipantName(e.target.value)} placeholder="John Doe" />
+                    <p className="text-sm text-muted-foreground">Signature: (type name to sign)</p>
+                </div>
+                  <div className="space-y-2">
+                    <Label>Date:</Label>
+                    <Input value={currentDate} readOnly disabled />
+                </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="witness-name">Name of Witness (print):</Label>
+                    <Input id="witness-name" value={witnessName} onChange={(e) => setWitnessName(e.target.value)} placeholder="Jane Smith" />
+                    <p className="text-sm text-muted-foreground">Signature: (type name to sign)</p>
+                </div>
+                  <div className="space-y-2">
+                    <Label>Date:</Label>
+                    <Input value={currentDate} readOnly disabled />
+                </div>
+                <div className="space-y-2">
+                    <Label htmlFor="poc-name">Person Obtaining Consent:</Label>
+                    <Input id="poc-name" value={pocName} onChange={(e) => setPocName(e.target.value)} placeholder="Dr. Investigator" />
+                    <p className="text-sm text-muted-foreground">Signature: (type name to sign)</p>
+                </div>
+                  <div className="space-y-2">
+                    <Label>Date:</Label>
+                    <Input value={currentDate} readOnly disabled />
+                </div>
             </div>
-          )}
+
+              <p className="text-xs text-muted-foreground pt-4">
+                Note: A copy of the signed, dated consent form must be kept by the Principle Investigator(s) and a copy must be given to the participant.
+              </p>
+          </div>
         </CardContent>
         <CardFooter>
-            {isExperimentFlow ? (
-                <Button className="w-full" onClick={handleContinue} disabled={!canContinue}>
-                    I Agree, Continue to Experiment
-                </Button>
-            ) : (
-                <Button className="w-full" variant="outline" onClick={() => router.push('/')}>
-                    <ArrowLeft className="mr-2 h-4 w-4" />
-                    Back to Main Menu
-                </Button>
-            )}
+            <Button className="w-full" onClick={handleContinue} disabled={!canContinue}>
+                I Agree, Continue to Experiment
+            </Button>
         </CardFooter>
       </Card>
     </main>

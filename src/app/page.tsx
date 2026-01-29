@@ -16,11 +16,11 @@ export default function Home() {
           <CardDescription className="text-center pt-1">Main Menu</CardDescription>
         </CardHeader>
         <CardContent className="flex flex-col gap-4 pt-4">
-          <Button size="lg" onClick={() => router.push('/start')}>
+          <Button size="lg" onClick={() => router.push('/consent')}>
             <PlaySquare className="mr-2" />
             Experiment
           </Button>
-          <Button size="lg" variant="outline" onClick={() => router.push('/start')}>
+          <Button size="lg" variant="outline" onClick={() => router.push('/consent')}>
             <FileText className="mr-2" />
             Consent Form
           </Button>
