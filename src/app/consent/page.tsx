@@ -15,6 +15,7 @@ export default function ConsentPage() {
   const router = useRouter();
   
   const [agreed, setAgreed] = useState(false);
+  const [parentalConsentAgreed, setParentalConsentAgreed] = useState(false);
   const [participantId, setParticipantId] = useState('');
   const [participantName, setParticipantName] = useState('');
   const [witnessName, setWitnessName] = useState('');
@@ -27,13 +28,13 @@ export default function ConsentPage() {
   }, []);
 
   const handleContinue = () => {
-    if (agreed && participantId.trim() && participantName.trim() && !isLoading) {
+    if (agreed && parentalConsentAgreed && participantId.trim() && participantName.trim() && !isLoading) {
       setIsLoading(true);
       router.push(`/session?participantId=${encodeURIComponent(participantId.trim())}`);
     }
   };
   
-  const canContinue = agreed && participantName.trim() !== '' && participantId.trim() !== '';
+  const canContinue = agreed && parentalConsentAgreed && participantName.trim() !== '' && participantId.trim() !== '';
 
   return (
     <main className="flex min-h-screen items-center justify-center bg-background p-4 md:p-8">
@@ -105,6 +106,13 @@ export default function ConsentPage() {
             </div>
           </ScrollArea>
           <div className="mt-6 space-y-4">
+             <div className="flex items-center space-x-2">
+                <Checkbox id="parent-consent" checked={parentalConsentAgreed} onCheckedChange={(checked) => setParentalConsentAgreed(checked === true)} />
+                <Label htmlFor="parent-consent" className="font-bold cursor-pointer">I have obtained parental consent to participate in this study.</Label>
+             </div>
+             
+             <Separator />
+
             <p>I voluntarily agree to participate in this research program and I understand that I will be given a copy of this signed Consent Form.</p>
             <div className="flex items-center space-x-4">
                 <div className="flex items-center space-x-2">
