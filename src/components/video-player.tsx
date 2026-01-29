@@ -49,15 +49,18 @@ export function VideoPlayer({ video, isActive, onInteraction, getWatchTime }: Vi
           frameBorder="0"
           allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
           allowFullScreen
-          className="h-full w-full object-cover"
+          className="absolute top-0 left-0 h-full w-full"
         ></iframe>
       ) : (
         <div className="h-full w-full bg-black" />
       )}
 
-      <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-black/10 pointer-events-none" />
+      {/* Transparent overlay to capture scroll events, but not clicks on buttons */}
+      <div className="absolute inset-0 z-10" />
+
+      <div className="absolute inset-0 z-20 bg-gradient-to-t from-black/60 via-transparent to-black/10 pointer-events-none" />
       
-      <div className="absolute bottom-4 left-4 right-4 text-white drop-shadow-lg pointer-events-none">
+      <div className="absolute bottom-4 left-4 right-4 z-20 text-white drop-shadow-lg pointer-events-none">
         <h3 className="font-bold">{video.user}</h3>
         <p className="mt-1 text-sm">{video.caption}</p>
         <div className="mt-2 flex items-center gap-2">
@@ -66,7 +69,7 @@ export function VideoPlayer({ video, isActive, onInteraction, getWatchTime }: Vi
         </div>
       </div>
       
-      <div className="absolute bottom-[20%] right-3 flex flex-col gap-4 text-white sm:bottom-1/4">
+      <div className="absolute bottom-[20%] right-3 z-30 flex flex-col gap-4 text-white sm:bottom-1/4">
           <div className="flex flex-col items-center gap-2">
               <button 
                   onClick={handleLike}
