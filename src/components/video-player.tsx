@@ -1,4 +1,3 @@
-import Image from 'next/image';
 import { Heart, MessageCircle, Share2, Music4 } from 'lucide-react';
 import type { Video } from '@/lib/videos';
 import { cn } from '@/lib/utils';
@@ -37,21 +36,28 @@ export function VideoPlayer({ video, isActive, onInteraction, getWatchTime }: Vi
   const handleShare = () => {
     onInteraction({ videoId: video.id, interactionType: 'share', watchTimeMs: getWatchTime() });
   };
+  
+  const videoSrc = `${video.src}?autoplay=1&mute=1&controls=0&loop=1&playlist=${video.id}&modestbranding=1&showinfo=0&rel=0`;
 
   return (
     <div className="relative h-full w-full overflow-hidden bg-black">
-      <Image
-        src={video.src}
-        alt={video.caption}
-        fill
-        className="object-cover"
-        priority={isActive}
-        data-ai-hint={video.imageHint}
-        sizes="100vh"
-      />
-      <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-black/10" />
+      {isActive ? (
+        <iframe
+          key={video.id}
+          src={videoSrc}
+          title={video.caption}
+          frameBorder="0"
+          allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+          allowFullScreen
+          className="h-full w-full object-cover"
+        ></iframe>
+      ) : (
+        <div className="h-full w-full bg-black" />
+      )}
+
+      <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-black/10 pointer-events-none" />
       
-      <div className="absolute bottom-4 left-4 right-4 text-white drop-shadow-lg">
+      <div className="absolute bottom-4 left-4 right-4 text-white drop-shadow-lg pointer-events-none">
         <h3 className="font-bold">{video.user}</h3>
         <p className="mt-1 text-sm">{video.caption}</p>
         <div className="mt-2 flex items-center gap-2">
