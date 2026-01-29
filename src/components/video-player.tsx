@@ -40,7 +40,7 @@ export function VideoPlayer({ video, isActive, onInteraction, getWatchTime }: Vi
   const videoSrc = `${video.src}?autoplay=1&mute=1&controls=0&loop=1&playlist=${video.id}&modestbranding=1&showinfo=0&rel=0`;
 
   return (
-    <div className="relative h-full w-full overflow-hidden rounded-xl bg-black">
+    <div className="relative h-full w-full overflow-hidden bg-black">
       {/* The iframe is set to pointer-events-none to allow the parent carousel to handle scroll events. */}
       {isActive ? (
         <iframe
@@ -53,7 +53,7 @@ export function VideoPlayer({ video, isActive, onInteraction, getWatchTime }: Vi
           className="absolute top-0 left-0 h-full w-full pointer-events-none"
         ></iframe>
       ) : (
-        <div className="h-full w-full rounded-xl bg-black" />
+        <div className="h-full w-full bg-black" />
       )}
 
       {/* Gradient for text readability */}

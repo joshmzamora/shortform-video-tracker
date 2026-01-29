@@ -17,7 +17,7 @@ import { Loader2, PartyPopper, ServerCrash } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { Textarea } from '@/components/ui/textarea';
 
-const SESSION_DURATION_SECONDS = 300; // 5 minutes
+const SESSION_DURATION_SECONDS = 600; // 10 minutes
 const SKIP_THRESHOLD_MS = 3000; // 3 seconds
 
 export type SessionData = VideoInteraction & {
@@ -141,7 +141,7 @@ function SessionPage() {
 
   if (sessionState === 'running') {
     return (
-      <div className="relative h-screen w-screen bg-black" vaul-drawer-wrapper="">
+      <div className="relative h-screen w-screen bg-black">
         <Carousel
           setApi={setApi}
           opts={{ align: "start" }}
