@@ -1,3 +1,34 @@
 {
-  "placeholderImages": []
+  "placeholderImages": [
+    {
+      "id": "video-1",
+      "description": "A person dancing in a vibrant city street",
+      "imageUrl": "https://images.unsplash.com/photo-1594943593810-75ab067097e3?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHw5fHxkYW5jZSUyMGNpdHl8ZW58MHx8fHwxNzY5NjU2ODA0fDA&ixlib=rb-4.1.0&q=80&w=1080",
+      "imageHint": "dance city"
+    },
+    {
+      "id": "video-2",
+      "description": "A chef preparing a delicious meal in a modern kitchen",
+      "imageUrl": "https://images.unsplash.com/photo-1630441508966-431c08536d1b?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHw4fHxjb29raW5nJTIwZm9vZHxlbnwwfHx8fDE3Njk2NTY4MDV8MA&ixlib=rb-4.1.0&q=80&w=1080",
+      "imageHint": "cooking food"
+    },
+    {
+      "id": "video-3",
+      "description": "A cute cat playing with a ball of yarn",
+      "imageUrl": "https://images.unsplash.com/photo-1529778873920-4da4926a72c2?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHwxfHxjdXRlJTIwY2F0fGVufDB8fHx8MTc2OTYyNDIyM3ww&ixlib=rb-4.1.0&q=80&w=1080",
+      "imageHint": "cute cat"
+    },
+    {
+      "id": "video-4",
+      "description": "A comedian telling jokes on a stage",
+      "imageUrl": "https://images.unsplash.com/photo-1611956425642-d5a8169abd63?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHwxfHxzdGFuZHVwJTIwY29tZWR5fGVufDB8fHx8MTc2OTY1NjgwNHww&ixlib=rb-4.1.0&q=80&w=1080",
+      "imageHint": "standup comedy"
+    },
+    {
+      "id": "video-5",
+      "description": "A person doing a DIY craft project",
+      "imageUrl": "https://images.unsplash.com/photo-1757625487036-1f9ad7f70289?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHwyfHxkaXklMjBjcmFmdHxlbnwwfHx8fDE3Njk2NTY4MDR8MA&ixlib=rb-4.1.0&q=80&w=1080",
+      "imageHint": "diy craft"
+    }
+  ]
 }
