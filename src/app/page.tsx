@@ -12,7 +12,7 @@ export default function Home() {
     <main className="flex min-h-screen items-center justify-center bg-background p-4">
       <Card className="w-full max-w-md shadow-lg">
         <CardHeader>
-          <CardTitle className="text-2xl font-headline text-center">VideoFlow Insights</CardTitle>
+          <CardTitle className="text-2xl font-headline text-center">AP Research Short Form Engagement Experiment</CardTitle>
           <CardDescription className="text-center pt-1">Main Menu</CardDescription>
         </CardHeader>
         <CardContent className="flex flex-col gap-4 pt-4">

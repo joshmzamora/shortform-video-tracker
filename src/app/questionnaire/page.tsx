@@ -9,6 +9,7 @@ import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { useToast } from '@/hooks/use-toast';
 import { saveQuestionnaireData } from './actions';
 import { Loader2, PartyPopper } from 'lucide-react';
+import { Separator } from '@/components/ui/separator';
 
 type Question = {
   id: string;
@@ -130,20 +131,22 @@ export default function QuestionnairePage() {
                 required
               />
             </div>
-          
-            <div className="space-y-6">
+            
+            <Separator />
+
+            <div className="space-y-8">
                 {questions.map((q, index) => (
-                    <div key={q.id}>
-                        <Label className="font-semibold">{index + 1}. {q.text}</Label>
+                    <div key={q.id} className="space-y-4">
+                        <Label className="font-semibold text-base">{index + 1}. {q.text}</Label>
                         <RadioGroup 
-                            className="mt-3 flex flex-col md:flex-row md:items-center md:justify-between gap-4"
+                            className="flex flex-col space-y-2 md:flex-row md:space-y-0 md:items-center md:gap-x-8"
                             onValueChange={(value) => handleAnswerChange(q.id, value)}
                             value={answers[q.id]}
                         >
                             {likertOptions.map(option => (
                                 <div key={option.id} className="flex items-center space-x-2">
                                     <RadioGroupItem value={option.id} id={`${q.id}-${option.id}`} />
-                                    <Label htmlFor={`${q.id}-${option.id}`} className="font-normal">{option.label}</Label>
+                                    <Label htmlFor={`${q.id}-${option.id}`} className="font-normal cursor-pointer">{option.label}</Label>
                                 </div>
                             ))}
                         </RadioGroup>
