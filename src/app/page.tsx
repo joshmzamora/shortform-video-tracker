@@ -14,7 +14,7 @@ export default function Home() {
 
   const handleStart = () => {
     if (participantId.trim()) {
-      router.push(`/session?participantId=${encodeURIComponent(participantId.trim())}`);
+      router.push(`/consent?participantId=${encodeURIComponent(participantId.trim())}`);
     }
   };
 
