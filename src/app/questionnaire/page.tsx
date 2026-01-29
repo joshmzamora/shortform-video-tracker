@@ -10,6 +10,7 @@ import { useToast } from '@/hooks/use-toast';
 import { saveQuestionnaireData } from './actions';
 import { Loader2, PartyPopper } from 'lucide-react';
 import { Separator } from '@/components/ui/separator';
+import { Checkbox } from '@/components/ui/checkbox';
 
 type Question = {
   id: string;
@@ -50,6 +51,7 @@ export default function QuestionnairePage() {
   const { toast } = useToast();
   const [participantId, setParticipantId] = useState('');
   const [answers, setAnswers] = useState<{[key: string]: string}>({});
+  const [parentConsent, setParentConsent] = useState(false);
   const [submissionState, setSubmissionState] = useState<'idle' | 'submitting' | 'submitted'>('idle');
 
   const handleAnswerChange = (questionId: string, value: string) => {
@@ -57,14 +59,14 @@ export default function QuestionnairePage() {
   };
   
   const allQuestionsAnswered = Object.keys(answers).length === questions.length;
-  const canSubmit = participantId.trim() !== '' && allQuestionsAnswered;
+  const canSubmit = participantId.trim() !== '' && allQuestionsAnswered && parentConsent;
 
   const handleSubmit = async () => {
     if (!canSubmit) {
         toast({
             variant: "destructive",
             title: "Incomplete Form",
-            description: "Please enter your Participant ID and answer all questions before submitting.",
+            description: "Please enter your Participant ID, confirm parental consent, and answer all questions before submitting.",
         });
         return;
     }
@@ -74,6 +76,7 @@ export default function QuestionnairePage() {
     const dataToSave = {
       participantId: participantId.trim(),
       answers,
+      parentConsent,
       timestamp: new Date().toISOString(),
     };
 
@@ -120,16 +123,22 @@ export default function QuestionnairePage() {
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-8">
-            <div>
-              <Label htmlFor="participantId" className="font-bold text-base">Participant ID</Label>
-              <Input
-                id="participantId"
-                placeholder="Enter your assigned participant ID"
-                value={participantId}
-                onChange={(e) => setParticipantId(e.target.value)}
-                className="mt-2"
-                required
-              />
+            <div className="space-y-4">
+                <div className="flex items-center space-x-2">
+                    <Checkbox id="parent-consent" checked={parentConsent} onCheckedChange={(checked) => setParentConsent(checked === true)} />
+                    <Label htmlFor="parent-consent" className="font-bold cursor-pointer">I have obtained parental consent to participate in this study.</Label>
+                </div>
+                <div>
+                  <Label htmlFor="participantId" className="font-bold text-base">Participant ID</Label>
+                  <Input
+                    id="participantId"
+                    placeholder="Enter your assigned participant ID"
+                    value={participantId}
+                    onChange={(e) => setParticipantId(e.target.value)}
+                    className="mt-2"
+                    required
+                  />
+                </div>
             </div>
             
             <Separator />
