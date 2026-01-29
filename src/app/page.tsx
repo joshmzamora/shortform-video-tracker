@@ -20,7 +20,7 @@ export default function Home() {
             <PlaySquare className="mr-2" />
             Experiment
           </Button>
-          <Button size="lg" variant="outline" onClick={() => router.push('/consent')}>
+          <Button size="lg" variant="outline" onClick={() => router.push('/start')}>
             <FileText className="mr-2" />
             Consent Form
           </Button>
