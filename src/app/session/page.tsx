@@ -17,6 +17,8 @@ import { Loader2, PartyPopper, ServerCrash } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { Textarea } from '@/components/ui/textarea';
 
+import { WheelGesturesPlugin } from 'embla-carousel-wheel-gestures';
+
 const SESSION_DURATION_SECONDS = 600; // 10 minutes
 const SKIP_THRESHOLD_MS = 3000; // 3 seconds
 
@@ -75,7 +77,7 @@ function SessionPage() {
 
   const handleSessionComplete = useCallback(async () => {
     setSessionState('exporting');
-    
+
     const finalWatchTime = getWatchTime();
     const finalViewRecord: SessionData = {
       videoId: videos[currentVideoIndex].id,
@@ -145,6 +147,7 @@ function SessionPage() {
         <Carousel
           setApi={setApi}
           opts={{ align: "start" }}
+          plugins={[WheelGesturesPlugin()]}
           orientation="vertical"
           className="h-full"
         >
@@ -206,7 +209,7 @@ function SessionPage() {
       />
     );
   }
-  
+
   if (sessionState === 'error') {
     return renderEndScreen(
       "An Error Occurred",
