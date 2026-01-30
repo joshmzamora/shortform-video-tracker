@@ -1,5 +1,7 @@
 "use server";
 
+import { Storage } from '@/lib/storage';
+
 export type QuestionnaireData = {
   participantId: string;
   answers: { [key: string]: string };
@@ -11,14 +13,13 @@ export async function saveQuestionnaireData(data: QuestionnaireData) {
     return { success: false, message: "Incomplete data." };
   }
 
-  console.log("--- QUESTIONNAIRE DATA RECEIVED ---");
-  console.log(`Participant: ${data.participantId}`);
-  console.log(`Timestamp: ${data.timestamp}`);
-  console.log("Answers:");
-  console.log(JSON.stringify(data.answers, null, 2));
-  console.log("--- END OF QUESTIONNAIRE DATA ---");
+  try {
+    const success = await Storage.Questionnaires.save(data);
+    if (!success) throw new Error("Storage write failed");
 
-  // In a real application, you would save this data to a database.
-  
-  return { success: true, message: "Questionnaire data saved successfully." };
+    return { success: true, message: "Questionnaire data saved successfully." };
+  } catch (error) {
+    console.error("Failed to save questionnaire data:", error);
+    return { success: false, message: "Failed to save data." };
+  }
 }
