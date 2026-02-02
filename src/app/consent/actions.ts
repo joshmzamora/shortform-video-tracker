@@ -26,6 +26,7 @@ export async function saveConsentData(data: ConsentData) {
     return { success: true, message: "Consent data saved successfully." };
   } catch (error) {
     console.error("Failed to save consent data:", error);
-    return { success: false, message: "Failed to save data." };
+    const errorMessage = error instanceof Error ? error.message : String(error);
+    return { success: false, message: `Failed to save data: ${errorMessage}` };
   }
 }

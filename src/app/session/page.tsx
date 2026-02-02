@@ -12,6 +12,7 @@ import { VideoPlayer, type VideoInteraction } from '@/components/video-player';
 import { SessionTimer } from '@/components/session-timer';
 import { type Video } from '@/lib/videos';
 import { saveSessionData, getVideos } from './actions';
+import { ClientStorage, STORAGE_KEYS } from '@/lib/client-storage';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Loader2, PartyPopper, ServerCrash } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
@@ -120,22 +121,41 @@ function SessionPage() {
     const finalData = [...sessionDataRef.current, finalViewRecord];
     setSessionData(finalData);
 
+    // 1. Try Server Save
+    let serverSuccess = false;
     try {
       const result = await saveSessionData(finalData);
-      if (result.success) {
-        setSessionState('completed');
-      } else {
-        throw new Error(result.message);
-      }
-    } catch (error) {
-      console.error("Failed to save session data:", error);
-      setSessionState('error');
-      toast({
-        variant: "destructive",
-        title: "Error",
-        description: "Could not save session data to the server.",
-      });
+      serverSuccess = result.success;
+    } catch (e) {
+      console.warn("Server save failed");
     }
+
+    // 2. Client Save
+    // Sessions are arrays, we wrap them or just save the array?
+    // ClientStorage.save appends the `data` to the list.
+    // If we pass an array, we get [[session1_events], [session2_events]]
+    ClientStorage.save(STORAGE_KEYS.SESSIONS, finalData);
+
+    // 3. Download if Server Fail
+    if (!serverSuccess) {
+       const blob = new Blob([JSON.stringify(finalData, null, 2)], { type: 'application/json' });
+       const url = URL.createObjectURL(blob);
+       const a = document.createElement('a');
+       a.href = url;
+       a.download = `session-${participantId}.json`;
+       document.body.appendChild(a);
+       a.click();
+       document.body.removeChild(a);
+       URL.revokeObjectURL(url);
+
+       toast({
+         title: "Saved to Device",
+         description: "Data saved to browser storage & downloaded.",
+       });
+    }
+
+    setSessionState('completed');
+
   }, [currentVideoIndex, getWatchTime, participantId, toast, videoList]);
 
   useEffect(() => {

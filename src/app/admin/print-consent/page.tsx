@@ -1,23 +1,30 @@
-import { Storage } from '@/lib/storage';
-import { notFound } from 'next/navigation';
-import { Button } from '@/components/ui/button';
+"use client";
+
+import { useEffect, useState, Suspense } from 'react';
+import { useSearchParams, notFound } from 'next/navigation';
+import { ClientStorage, STORAGE_KEYS } from '@/lib/client-storage';
 import { Separator } from '@/components/ui/separator';
 import PrintButton from './print-button';
 
-export default async function PrintConsentPage({
-  searchParams,
-}: {
-  searchParams: Promise<{ id: string }>;
-}) {
-  const { id } = await searchParams;
-  if (!id) return notFound();
+function PrintConsentContent() {
+  const searchParams = useSearchParams();
+  const id = searchParams.get('id');
+  const [consent, setConsent] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
 
-  const consents = await Storage.Consents.getAll();
-  // Find the most recent consent for this ID (in case of duplicates, though logic should prevent/handle)
-  // Assuming append-only, take the last one matching ID
-  const consent = consents.filter((c: any) => c.participantId === id).pop();
+  useEffect(() => {
+    if (!id) return;
+    
+    // Try to find in client storage (populated via Admin Dashboard import)
+    const allConsents = ClientStorage.get(STORAGE_KEYS.CONSENTS);
+    const found = allConsents.find((c: any) => c.participantId === id);
+    
+    setConsent(found || null);
+    setLoading(false);
+  }, [id]);
 
-  if (!consent) return notFound();
+  if (loading) return <div className="p-8">Loading consent form...</div>;
+  if (!consent) return <div className="p-8 text-red-500">Consent form not found. Please ensure you have imported the relevant data in the Admin Dashboard first.</div>;
 
   const formattedDate = new Date(consent.timestamp).toLocaleDateString();
 
@@ -144,5 +151,13 @@ export default async function PrintConsentPage({
         </div>
       </div>
     </div>
+  );
+}
+
+export default function PrintConsentPage() {
+  return (
+    <Suspense fallback={<div>Loading...</div>}>
+      <PrintConsentContent />
+    </Suspense>
   );
 }

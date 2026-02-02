@@ -8,6 +8,7 @@ import { Label } from '@/components/ui/label';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { useToast } from '@/hooks/use-toast';
 import { saveQuestionnaireData } from './actions';
+import { ClientStorage, STORAGE_KEYS } from '@/lib/client-storage';
 import { Loader2, PartyPopper } from 'lucide-react';
 import { Separator } from '@/components/ui/separator';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -89,21 +90,40 @@ function QuestionnaireContent() {
       timestamp: new Date().toISOString(),
     };
 
-    const result = await saveQuestionnaireData(dataToSave);
-
-    if (result.success) {
-      setSubmissionState('submitted');
-      setTimeout(() => {
-        router.push(`/session?participantId=${encodeURIComponent(participantId.trim())}`);
-      }, 2000);
-    } else {
-      setSubmissionState('idle');
-      toast({
-        variant: "destructive",
-        title: "Submission Error",
-        description: result.message || "Could not save your responses. Please try again.",
-      });
+    // 1. Try Server Save
+    let serverSuccess = false;
+    try {
+      const result = await saveQuestionnaireData(dataToSave);
+      serverSuccess = result.success;
+    } catch (e) {
+      console.warn("Server save failed");
     }
+
+    // 2. Client Save
+    ClientStorage.save(STORAGE_KEYS.QUESTIONNAIRES, dataToSave);
+
+    // 3. Download if Server Fail
+    if (!serverSuccess) {
+       const blob = new Blob([JSON.stringify(dataToSave, null, 2)], { type: 'application/json' });
+       const url = URL.createObjectURL(blob);
+       const a = document.createElement('a');
+       a.href = url;
+       a.download = `questionnaire-${participantId.trim()}.json`;
+       document.body.appendChild(a);
+       a.click();
+       document.body.removeChild(a);
+       URL.revokeObjectURL(url);
+
+       toast({
+         title: "Saved to Device",
+         description: "Data saved to browser storage & downloaded.",
+       });
+    }
+
+    setSubmissionState('submitted');
+    setTimeout(() => {
+      router.push(`/session?participantId=${encodeURIComponent(participantId.trim())}`);
+    }, 2000);
   };
 
   if (submissionState === 'submitted') {

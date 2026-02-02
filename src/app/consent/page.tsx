@@ -11,6 +11,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Separator } from '@/components/ui/separator';
 import { Loader2 } from 'lucide-react';
 import { saveConsentData } from './actions';
+import { ClientStorage, STORAGE_KEYS } from '@/lib/client-storage';
 import { useToast } from '@/hooks/use-toast';
 
 export default function ConsentPage() {
@@ -22,19 +23,14 @@ export default function ConsentPage() {
   const [participantName, setParticipantName] = useState('');
   const [witnessName, setWitnessName] = useState('');
   const [pocName, setPocName] = useState('');
-  const [currentDate, setCurrentDate] = useState('');
   const [isLoading, setIsLoading] = useState(false);
-  const { toast } = useToast();
-
-  useEffect(() => {
-    setCurrentDate(new Date().toLocaleDateString());
-  }, []);
+  const currentDate = new Date().toLocaleDateString();
 
   const handleContinue = async () => {
     if (agreed && parentalConsentAgreed && participantId.trim() && participantName.trim() && !isLoading) {
       setIsLoading(true);
 
-      const result = await saveConsentData({
+      const consentData = {
         participantId: participantId.trim(),
         participantName: participantName.trim(),
         witnessName: witnessName.trim(),
@@ -42,18 +38,51 @@ export default function ConsentPage() {
         parentalConsentAgreed,
         agreed,
         timestamp: new Date().toISOString(),
-      });
+      };
 
-      if (result.success) {
-        router.push(`/questionnaire?participantId=${encodeURIComponent(participantId.trim())}`);
-      } else {
-        setIsLoading(false);
+      // 1. Try Server Save (Best Effort for Localhost)
+      // We keep this because on localhost it's nice to have files.
+      let serverSuccess = false;
+      try {
+        const result = await saveConsentData(consentData);
+        serverSuccess = result.success;
+      } catch (e) {
+        console.warn("Server save failed (expected on Vercel)");
+      }
+
+      // 2. ALWAYS Save to Client Storage (Reliable)
+      ClientStorage.save(STORAGE_KEYS.CONSENTS, consentData);
+
+      // 3. Fallback Download (Only if both fail? No, only if server fails is enough for backup)
+      // Actually, if we have ClientStorage, we don't strictly NEED the download, 
+      // but the user seemed to like the "safe" feeling.
+      // Let's only download if we are NOT on localhost (heuristic?) or just always download?
+      // User said "Admin dashboard needs to work everywhere".
+      // If we rely on ClientStorage, the Admin Dashboard on the SAME device works.
+      // If we want Admin on DIFFERENT device, we need the file download.
+      // Let's keep the file download logic but make it optional or "toast action".
+
+      if (!serverSuccess) {
+        // Auto-download as backup for "Transfer to Admin"
+        const blob = new Blob([JSON.stringify(consentData, null, 2)], { type: 'application/json' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `consent-${participantId.trim()}.json`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+
         toast({
-          variant: "destructive",
-          title: "Error",
-          description: result.message || "Could not save consent form. Please try again.",
+          title: "Saved to Device",
+          description: "Data saved to browser storage & downloaded (keep this file!).",
         });
       }
+
+      setTimeout(() => {
+        router.push(`/questionnaire?participantId=${encodeURIComponent(participantId.trim())}`);
+      }, 1000);
     }
   };
 
