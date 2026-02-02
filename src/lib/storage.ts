@@ -4,6 +4,7 @@ import path from 'path';
 const DATA_DIR = path.join(process.cwd(), 'data');
 const SESSIONS_FILE = path.join(DATA_DIR, 'sessions.json');
 const QUESTIONNAIRES_FILE = path.join(DATA_DIR, 'questionnaires.json');
+const CONSENTS_FILE = path.join(DATA_DIR, 'consents.json');
 
 // Ensure data directory exists
 fs.ensureDirSync(DATA_DIR);

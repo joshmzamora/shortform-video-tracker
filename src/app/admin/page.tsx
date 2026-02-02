@@ -15,6 +15,7 @@ export const dynamic = 'force-dynamic';
 export default async function AdminPage() {
   const sessions = await Storage.Sessions.getAll();
   const questionnaires = await Storage.Questionnaires.getAll();
+  const consents = await Storage.Consents.getAll();
 
   // Helper to format date
   const formatDate = (iso: string) => new Date(iso).toLocaleString();
@@ -22,13 +23,59 @@ export default async function AdminPage() {
   return (
     <div className="container mx-auto py-10">
       <h1 className="text-3xl font-bold mb-8">Admin Dashboard</h1>
-      
+
       <Tabs defaultValue="questionnaires" className="w-full">
         <TabsList>
+          <TabsTrigger value="consents">Consents ({consents.length})</TabsTrigger>
           <TabsTrigger value="questionnaires">Questionnaires ({questionnaires.length})</TabsTrigger>
           <TabsTrigger value="sessions">Sessions ({sessions.length})</TabsTrigger>
         </TabsList>
-        
+
+        <TabsContent value="consents">
+          <Card>
+            <CardHeader>
+              <CardTitle>Signed Consent Forms</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Participant ID</TableHead>
+                    <TableHead>Name</TableHead>
+                    <TableHead>Date</TableHead>
+                    <TableHead>Parental Consent</TableHead>
+                    <TableHead>Actions</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {consents.map((c: any, i: number) => (
+                    <TableRow key={i}>
+                      <TableCell className="font-medium">{c.participantId}</TableCell>
+                      <TableCell>{c.participantName}</TableCell>
+                      <TableCell>{formatDate(c.timestamp)}</TableCell>
+                      <TableCell>{c.parentalConsentAgreed ? "Yes" : "No"}</TableCell>
+                      <TableCell>
+                        <a
+                          href={`/admin/print-consent?id=${c.participantId}`}
+                          target="_blank"
+                          className="text-blue-500 hover:underline text-sm"
+                        >
+                          View / Print PDF
+                        </a>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                  {consents.length === 0 && (
+                    <TableRow>
+                      <TableCell colSpan={5} className="text-center">No consent forms found</TableCell>
+                    </TableRow>
+                  )}
+                </TableBody>
+              </Table>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
         <TabsContent value="questionnaires">
           <Card>
             <CardHeader>
@@ -68,7 +115,7 @@ export default async function AdminPage() {
             </CardContent>
           </Card>
         </TabsContent>
-        
+
         <TabsContent value="sessions">
           <Card>
             <CardHeader>
@@ -109,7 +156,7 @@ export default async function AdminPage() {
                       </TableRow>
                     );
                   })}
-                   {sessions.length === 0 && (
+                  {sessions.length === 0 && (
                     <TableRow>
                       <TableCell colSpan={4} className="text-center">No data found</TableCell>
                     </TableRow>

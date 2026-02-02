@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from 'react';
+import { useState, useEffect, Suspense } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -11,6 +11,7 @@ import { saveQuestionnaireData } from './actions';
 import { Loader2, PartyPopper } from 'lucide-react';
 import { Separator } from '@/components/ui/separator';
 import { Checkbox } from '@/components/ui/checkbox';
+import { useSearchParams, useRouter } from 'next/navigation';
 
 type Question = {
   id: string;
@@ -47,11 +48,21 @@ const likertOptions = [
   { id: '5', label: 'Strongly Agree' },
 ];
 
-export default function QuestionnairePage() {
+function QuestionnaireContent() {
   const { toast } = useToast();
+  const searchParams = useSearchParams();
+  const router = useRouter();
+  
   const [participantId, setParticipantId] = useState('');
   const [answers, setAnswers] = useState<{[key: string]: string}>({});
   const [submissionState, setSubmissionState] = useState<'idle' | 'submitting' | 'submitted'>('idle');
+
+  useEffect(() => {
+    const id = searchParams.get('participantId');
+    if (id) {
+      setParticipantId(id);
+    }
+  }, [searchParams]);
 
   const handleAnswerChange = (questionId: string, value: string) => {
     setAnswers(prev => ({ ...prev, [questionId]: value }));
@@ -82,6 +93,9 @@ export default function QuestionnairePage() {
 
     if (result.success) {
       setSubmissionState('submitted');
+      setTimeout(() => {
+        router.push(`/session?participantId=${encodeURIComponent(participantId.trim())}`);
+      }, 2000);
     } else {
       setSubmissionState('idle');
       toast({
@@ -101,7 +115,7 @@ export default function QuestionnairePage() {
                 <PartyPopper className="h-8 w-8 text-accent-foreground" />
               </div>
               <CardTitle className="mt-4 text-2xl font-headline">Thank You!</CardTitle>
-              <CardDescription>Your responses have been successfully recorded. You may now close this window.</CardDescription>
+              <CardDescription>Your responses have been recorded. Redirecting to the experiment...</CardDescription>
             </CardHeader>
           </Card>
         </main>
@@ -169,5 +183,13 @@ export default function QuestionnairePage() {
         </CardFooter>
       </Card>
     </main>
+  );
+}
+
+export default function QuestionnairePage() {
+  return (
+    <Suspense fallback={<div className="flex h-screen items-center justify-center"><Loader2 className="h-8 w-8 animate-spin" /></div>}>
+      <QuestionnaireContent />
+    </Suspense>
   );
 }
