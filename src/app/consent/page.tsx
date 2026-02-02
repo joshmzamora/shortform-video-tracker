@@ -51,7 +51,7 @@ export default function ConsentPage() {
         toast({
           variant: "destructive",
           title: "Error",
-          description: "Could not save consent form. Please try again.",
+          description: result.message || "Could not save consent form. Please try again.",
         });
       }
     }

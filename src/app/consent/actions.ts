@@ -13,7 +13,9 @@ export type ConsentData = {
 };
 
 export async function saveConsentData(data: ConsentData) {
+  console.log("[saveConsentData] Received data:", data);
   if (!data || !data.participantId) {
+    console.warn("[saveConsentData] Incomplete data");
     return { success: false, message: "Incomplete data." };
   }
 

@@ -11,15 +11,17 @@ fs.ensureDirSync(DATA_DIR);
 
 export async function saveRecord(file: string, data: any) {
   try {
+    console.log(`[Storage] Saving to ${file}`);
     let records = [];
     if (await fs.pathExists(file)) {
       records = await fs.readJson(file);
     }
     records.push(data);
     await fs.writeJson(file, records, { spaces: 2 });
+    console.log(`[Storage] Successfully saved to ${file}`);
     return true;
   } catch (error) {
-    console.error(`Error saving to ${file}:`, error);
+    console.error(`[Storage] Error saving to ${file}:`, error);
     return false;
   }
 }
