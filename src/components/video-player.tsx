@@ -3,7 +3,6 @@ import type { Video } from '@/lib/videos';
 import { cn } from '@/lib/utils';
 import { VideoComments } from '@/components/video-comments';
 import { useState, useEffect, useRef } from 'react';
-import YouTube, { YouTubeEvent, YouTubePlayer } from 'react-youtube';
 import { Slider } from '@/components/ui/slider';
 import { useToast } from '@/hooks/use-toast';
 
@@ -24,25 +23,21 @@ type VideoPlayerProps = {
 
 export function VideoPlayer({ video, isActive, onInteraction, getWatchTime }: VideoPlayerProps) {
   const [isLiked, setIsLiked] = useState(false);
-  const [player, setPlayer] = useState<YouTubePlayer | null>(null);
+  const videoRef = useRef<HTMLVideoElement>(null);
   const [isPlaying, setIsPlaying] = useState(false);
   const [progress, setProgress] = useState(0);
   const [duration, setDuration] = useState(0);
   const [showControls, setShowControls] = useState(false);
-  const [isPlayerReady, setIsPlayerReady] = useState(false);
   const { toast } = useToast();
-
-  // Extract the real YouTube ID safely
-  const realVideoId = video.src ? (video.src.split('/').pop() || video.id) : video.id.split('-')[0];
 
   // Handle Play/Pause
   const togglePlay = () => {
-    if (!player || !isPlayerReady) return;
+    if (!videoRef.current) return;
     try {
       if (isPlaying) {
-        player.pauseVideo();
+        videoRef.current.pause();
       } else {
-        player.playVideo();
+        videoRef.current.play();
       }
       setIsPlaying(!isPlaying);
       setShowControls(true);
@@ -68,7 +63,7 @@ export function VideoPlayer({ video, isActive, onInteraction, getWatchTime }: Vi
     onInteraction({ videoId: video.id, interactionType: 'share', watchTimeMs: getWatchTime() });
 
     // Copy link logic
-    const shareUrl = `https://youtube.com/shorts/${realVideoId}`;
+    const shareUrl = typeof window !== 'undefined' ? `${window.location.origin}${video.src}` : video.src;
     try {
       await navigator.clipboard.writeText(shareUrl);
       toast({
@@ -85,108 +80,75 @@ export function VideoPlayer({ video, isActive, onInteraction, getWatchTime }: Vi
   };
 
   const handleSeek = (value: number[]) => {
-    if (!player) return;
+    if (!videoRef.current) return;
     const seekTime = (value[0] / 100) * duration;
-    player.seekTo(seekTime);
+    videoRef.current.currentTime = seekTime;
     setProgress(value[0]);
   };
 
   // Sync progress
   useEffect(() => {
-    if (!player || !isPlayerReady || !isPlaying || !isActive) return;
+    const videoEl = videoRef.current;
+    if (!videoEl) return;
 
-    const interval = setInterval(() => {
-      try {
-        const currentTime = player.getCurrentTime();
-        const totalDuration = player.getDuration();
-        if (totalDuration) {
-          setDuration(totalDuration);
-          setProgress((currentTime / totalDuration) * 100);
-        }
-      } catch (e) {
-        // Ignore errors during progress sync if player is not ready
+    const handleTimeUpdate = () => {
+      if (videoEl.duration) {
+        setDuration(videoEl.duration);
+        setProgress((videoEl.currentTime / videoEl.duration) * 100);
       }
-    }, 200);
+    };
 
-    return () => clearInterval(interval);
-  }, [player, isPlayerReady, isPlaying, isActive]);
+    videoEl.addEventListener('timeupdate', handleTimeUpdate);
+    return () => videoEl.removeEventListener('timeupdate', handleTimeUpdate);
+  }, []);
 
-  // Pause when not active
+  // Handle Play/Pause based on isActive prop
   useEffect(() => {
-    if (player && isPlayerReady) {
-      try {
-        if (isActive) {
-          player.playVideo();
-        } else {
-          player.pauseVideo();
-        }
-      } catch (e) {
-        console.error("Error in isActive effect:", e);
-      }
-    }
-  }, [isActive, player, isPlayerReady]);
+    const videoEl = videoRef.current;
+    if (!videoEl) return;
 
-  const onPlayerReady = (event: YouTubeEvent) => {
-    setPlayer(event.target);
-    setIsPlayerReady(true);
     if (isActive) {
-      event.target.playVideo();
+      // Reset video if coming back to it? Or just play.
+      // TikTok restarts loops but resumes scrolling?
+      // Typically: play()
+      videoEl.play().catch(e => {
+        console.log("Autoplay blocked or failed", e);
+        setIsPlaying(false);
+      });
+      setIsPlaying(true);
     } else {
-      event.target.pauseVideo();
+      videoEl.pause();
+      setIsPlaying(false);
+      // Optional: reset time to 0?
+      // videoEl.currentTime = 0;
     }
-  };
+  }, [isActive]);
 
-  const onPlayerStateChange = (event: YouTubeEvent) => {
-    // 1 = playing, 2 = paused
-    setIsPlaying(event.data === 1);
-  };
+  const onPlay = () => setIsPlaying(true);
+  const onPause = () => setIsPlaying(false);
 
   return (
     <div className="relative h-full w-full overflow-hidden bg-black group">
-      {/* YouTube Player Wrapper */}
-      <div className="absolute inset-0 h-full w-full pointer-events-none">
-        {/* pointer-events-none allows clicks to pass through to our overlay, 
-             BUT react-youtube iframe needs to receive some events? 
-             Actually, we want to intercept clicks. 
-             If we set pointer-events-none on the wrapper, the iframe won't get clicks.
-             This is what we want for "Tap to Pause".
-             However, the iframe needs to be interactive for internal things? 
-             YouTube Iframe API controls allow us to control it programmatically. 
-             So disabling pointer events on the iframe is fine as long as we handle everything.
-         */}
-        <YouTube
-          videoId={realVideoId}
-          opts={{
-            height: '100%',
-            width: '100%',
-            playerVars: {
-              autoplay: 1,
-              controls: 0,
-              modestbranding: 1,
-              rel: 0,
-              showinfo: 0,
-              loop: 1,
-              playlist: realVideoId,
-              playsinline: 1,
-              enablejsapi: 1,
-              origin: typeof window !== 'undefined' ? window.location.origin : '',
-            },
-          }}
-          className="h-full w-full"
-          iframeClassName="h-full w-full object-cover"
-          onReady={onPlayerReady}
-          onStateChange={onPlayerStateChange}
-        />
-      </div>
-
-      {/* Tap Overlay for Play/Pause */}
-      <div
-        className="absolute inset-0 z-10 cursor-pointer"
+      {/* HTML5 Video Player */}
+      <video
+        ref={videoRef}
+        src={video.src}
+        className="h-full w-full object-cover"
+        loop
+        playsInline
+        muted={false} // Maybe start muted if autoplay policy issues, but users expect sound
+        onPlay={onPlay}
+        onPause={onPause}
         onClick={togglePlay}
+      />
+
+      {/* Tap Overlay for Play/Pause (transparent, but captures clicks if video doesn't) */}
+      <div
+        className="absolute inset-0 z-10 cursor-pointer pointer-events-none"
       >
         {/* Play/Pause Animation Overlay */}
         {showControls && (
-          <div className="absolute inset-0 flex items-center justify-center bg-black/20 transition-opacity duration-300">
+          <div className="absolute inset-0 flex items-center justify-center bg-black/20 transition-opacity duration-300 pointer-events-none">
             {isPlaying ? (
               <Play className="h-16 w-16 text-white/80 animate-ping" fill="currentColor" />
             ) : (
@@ -223,7 +185,7 @@ export function VideoPlayer({ video, isActive, onInteraction, getWatchTime }: Vi
 
         <div className="flex flex-col items-center gap-1">
           <div onClick={handleComment}>
-            <VideoComments videoId={video.id} realVideoId={realVideoId} />
+            <VideoComments videoId={video.id} realVideoId={video.id} />
           </div>
           <span className="text-xs font-semibold drop-shadow-md">Comment</span>
         </div>

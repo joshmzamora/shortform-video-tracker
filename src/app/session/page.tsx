@@ -10,8 +10,8 @@ import {
 } from "@/components/ui/carousel";
 import { VideoPlayer, type VideoInteraction } from '@/components/video-player';
 import { SessionTimer } from '@/components/session-timer';
-import { videos } from '@/lib/videos';
-import { saveSessionData } from './actions';
+import { type Video } from '@/lib/videos';
+import { saveSessionData, getVideos } from './actions';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Loader2, PartyPopper, ServerCrash } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
@@ -40,6 +40,7 @@ function SessionPage() {
   const [sessionState, setSessionState] = useState<SessionState>('initializing');
   const [sessionData, setSessionData] = useState<SessionData[]>([]);
   const [currentVideoIndex, setCurrentVideoIndex] = useState(0);
+  const [videoList, setVideoList] = useState<Video[]>([]);
 
   const watchTimeStartRef = useRef<number>(0);
   const sessionDataRef = useRef<SessionData[]>([]);
@@ -49,16 +50,42 @@ function SessionPage() {
   }, [sessionData]);
 
   useEffect(() => {
-    if (!participantId) {
-      router.replace('/');
-    } else {
-      setSessionState('running');
-      watchTimeStartRef.current = Date.now();
-    }
-  }, [participantId, router]);
+    const initSession = async () => {
+      if (!participantId) {
+        router.replace('/');
+        return;
+      }
+
+      try {
+        const result = await getVideos();
+        if (result.success && result.videos && result.videos.length > 0) {
+          setVideoList(result.videos);
+          setSessionState('running');
+          watchTimeStartRef.current = Date.now();
+        } else {
+          toast({
+            variant: "destructive",
+            title: "Configuration Error",
+            description: result.message || "No videos found in public/videos folder.",
+          });
+          setSessionState('error');
+        }
+      } catch (error) {
+        console.error("Failed to load videos:", error);
+        toast({
+          variant: "destructive",
+          title: "Error",
+          description: "Failed to load videos.",
+        });
+        setSessionState('error');
+      }
+    };
+
+    initSession();
+  }, [participantId, router, toast]);
 
   const handleInteraction = useCallback((interaction: VideoInteraction) => {
-    const video = videos.find(v => v.id === interaction.videoId);
+    const video = videoList.find(v => v.id === interaction.videoId);
     if (!video || !participantId) return;
 
     const newRecord: SessionData = {
@@ -68,7 +95,7 @@ function SessionPage() {
       timestamp: new Date().toISOString(),
     };
     setSessionData(prevData => [...prevData, newRecord]);
-  }, [participantId]);
+  }, [participantId, videoList]);
 
   const getWatchTime = useCallback(() => {
     if (watchTimeStartRef.current === 0) return 0;
@@ -79,12 +106,14 @@ function SessionPage() {
     setSessionState('exporting');
 
     const finalWatchTime = getWatchTime();
+    if (videoList.length === 0) return; // Guard clause
+
     const finalViewRecord: SessionData = {
-      videoId: videos[currentVideoIndex].id,
+      videoId: videoList[currentVideoIndex].id,
       interactionType: 'view',
       watchTimeMs: finalWatchTime,
       participantId: participantId!,
-      genre: videos[currentVideoIndex].genre,
+      genre: videoList[currentVideoIndex].genre,
       timestamp: new Date().toISOString(),
     };
 
@@ -107,10 +136,10 @@ function SessionPage() {
         description: "Could not save session data to the server.",
       });
     }
-  }, [currentVideoIndex, getWatchTime, participantId, toast]);
+  }, [currentVideoIndex, getWatchTime, participantId, toast, videoList]);
 
   useEffect(() => {
-    if (!api) return;
+    if (!api || videoList.length === 0) return;
 
     const onSelect = (carouselApi: CarouselApi) => {
       const newIndex = carouselApi.selectedScrollSnap();
@@ -120,7 +149,7 @@ function SessionPage() {
       const interactionType = watchTimeMs < SKIP_THRESHOLD_MS ? 'skip' : 'view';
 
       handleInteraction({
-        videoId: videos[previousIndex].id,
+        videoId: videoList[previousIndex].id,
         interactionType,
         watchTimeMs,
       });
@@ -131,7 +160,7 @@ function SessionPage() {
 
     api.on("select", onSelect);
     return () => { api.off("select", onSelect) };
-  }, [api, currentVideoIndex, getWatchTime, handleInteraction]);
+  }, [api, currentVideoIndex, getWatchTime, handleInteraction, videoList]);
 
   if (sessionState === 'initializing') {
     return (
@@ -152,7 +181,7 @@ function SessionPage() {
           className="h-full"
         >
           <CarouselContent className="-mt-0 h-full">
-            {videos.map((video, index) => (
+            {videoList.map((video, index) => (
               <CarouselItem key={video.id} className="pt-0">
                 <VideoPlayer
                   video={video}
