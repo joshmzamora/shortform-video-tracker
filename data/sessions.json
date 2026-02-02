@@ -146,5 +146,29 @@
       "genre": "General",
       "timestamp": "2026-02-02T12:36:07.028Z"
     }
-  ]
+  ],
+  {
+    "videoId": "video3.mp4",
+    "interactionType": "skip",
+    "watchTimeMs": 2640,
+    "participantId": "asdf",
+    "genre": "General",
+    "timestamp": "2026-02-02T14:21:23.271Z"
+  },
+  {
+    "videoId": "video2.mp4",
+    "interactionType": "skip",
+    "watchTimeMs": 234,
+    "participantId": "asdf",
+    "genre": "General",
+    "timestamp": "2026-02-02T14:21:23.505Z"
+  },
+  {
+    "videoId": "Why do we launch rockets from Florida_.mp4",
+    "interactionType": "skip",
+    "watchTimeMs": 265,
+    "participantId": "asdf",
+    "genre": "General",
+    "timestamp": "2026-02-02T14:21:23.771Z"
+  }
 ]

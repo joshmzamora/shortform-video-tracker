@@ -14,12 +14,16 @@ try {
 }
 
 // In-memory fallback for Vercel/Read-only environments
-// Note: This data is ephemeral and will be lost when the server process restarts.
-const memoryStore: Record<string, any[]> = {
-  [SESSIONS_FILE]: [],
-  [QUESTIONNAIRES_FILE]: [],
-  [CONSENTS_FILE]: []
-};
+// Use global to persist across module reloads in dev
+const globalStore = global as any;
+if (!globalStore.__memoryStore) {
+  globalStore.__memoryStore = {
+    [SESSIONS_FILE]: [],
+    [QUESTIONNAIRES_FILE]: [],
+    [CONSENTS_FILE]: []
+  };
+}
+const memoryStore: Record<string, any[]> = globalStore.__memoryStore;
 
 export async function saveRecord(file: string, data: any) {
   try {
@@ -30,17 +34,15 @@ export async function saveRecord(file: string, data: any) {
     memoryStore[file].push(data);
 
     // 2. Try to persist to disk
+    // On Vercel, this might fail, but we try anyway.
+    // If it fails, we rely on memoryStore.
     let records = [];
     if (await fs.pathExists(file)) {
       try {
         records = await fs.readJson(file);
       } catch (readError) {
-        console.warn(`[Storage] Failed to read existing file ${file}:`, readError);
+        // console.warn(`[Storage] Failed to read existing file ${file}:`, readError);
       }
-    } else {
-      // If file doesn't exist on disk, use memory store as base? 
-      // No, keep them separate to avoid confusion, but we append new data.
-      // actually, if we can't read, we assume empty.
     }
     
     records.push(data);
@@ -50,37 +52,43 @@ export async function saveRecord(file: string, data: any) {
 
   } catch (error: any) {
     console.warn(`[Storage] Disk write failed (using in-memory fallback):`, error.message);
-    // Return true because we "saved" it to memory, so the user flow doesn't break.
-    // However, we should probably signal this is temporary.
+    // Return true because we "saved" it to memory
     return true; 
   }
 }
 
 export async function getRecords(file: string) {
-  let diskRecords = [];
+  let diskRecords: any[] = [];
   try {
     if (await fs.pathExists(file)) {
       diskRecords = await fs.readJson(file);
     }
   } catch (error) {
-    console.warn(`[Storage] Disk read failed for ${file}:`, error);
+    // console.warn(`[Storage] Disk read failed for ${file}:`, error);
   }
 
-  // Merge with memory store (deduplicate?)
-  // For simplicity, we'll just return disk records if available, 
-  // OR memory records if disk failed/is empty but memory has something.
-  // A proper merge is hard without unique IDs. 
-  // Let's concat them for now, assuming memoryStore contains *new* items not on disk?
-  // No, memoryStore currently mirrors the *append* operation.
-  
   const memRecords = memoryStore[file] || [];
   
-  // If we are in a read-only env, diskRecords might be empty or stale.
-  // If we are local, diskRecords is the source of truth.
+  // MERGE STRATEGY:
+  // If we have disk records, they are likely the source of truth for historical data.
+  // But memRecords might have *recent* data that failed to write to disk.
+  // To avoid duplicates, we can try to filter? 
+  // For now, if disk works, we trust disk. If disk is empty (or failed), we trust memory.
+  // BUT: What if disk has 5 items, and memory has the 6th item?
+  // Ideally, we return memory if disk write failed.
+  // Let's return a combination if possible, or just memory if disk is empty.
   
-  // Naive strategy: prefer disk. If disk empty, check memory.
-  if (diskRecords.length > 0) return diskRecords;
-  return memRecords;
+  // Enhanced Logic for Vercel:
+  // If diskRecords is empty but memRecords is not, return memRecords.
+  if (diskRecords.length === 0 && memRecords.length > 0) return memRecords;
+  
+  // If both have data, we might be in a weird state. 
+  // If we assume memoryStore is a SUPERSET of what failed to write...
+  // Actually, memoryStore accumulates *everything* since server start.
+  // So memoryStore might be more complete for the *current* session.
+  
+  // For the user's requirement "updates automatically", memory is key.
+  return diskRecords.length > memRecords.length ? diskRecords : memRecords;
 }
 
 export const Storage = {

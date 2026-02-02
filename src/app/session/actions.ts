@@ -44,7 +44,8 @@ export async function getVideos(): Promise<{ success: boolean; videos: Video[]; 
 }
 
 export async function saveSessionData(data: SessionData[]) {
-  // In a real application, you would validate the data schema here.
+  // Bulk save (Legacy/Backup)
+  // Saves an array of events as a single record (Session)
   if (!data || data.length === 0) {
     return { success: false, message: "No data to save." };
   }
@@ -57,5 +58,23 @@ export async function saveSessionData(data: SessionData[]) {
   } catch (error) {
     console.error("Failed to save session data:", error);
     return { success: false, message: "Failed to save data." };
+  }
+}
+
+export async function saveInteraction(data: SessionData) {
+  // Immediate Transmission
+  // Saves a single interaction event
+  if (!data) {
+    return { success: false, message: "No data to save." };
+  }
+
+  try {
+    const success = await Storage.Sessions.save(data);
+    if (!success) throw new Error("Storage write failed");
+
+    return { success: true, message: "Interaction saved." };
+  } catch (error) {
+    console.error("Failed to save interaction:", error);
+    return { success: false, message: "Failed to save interaction." };
   }
 }
