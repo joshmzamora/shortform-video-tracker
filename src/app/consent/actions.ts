@@ -1,6 +1,6 @@
 "use server";
 
-import { Storage } from '@/lib/storage';
+import { appwriteService, Collections } from '@/lib/appwrite';
 
 export type ConsentData = {
   participantId: string;
@@ -20,8 +20,8 @@ export async function saveConsentData(data: ConsentData) {
   }
 
   try {
-    const success = await Storage.Consents.save(data);
-    if (!success) throw new Error("Storage write failed");
+    const success = await appwriteService.saveDocument(Collections.Consents, data);
+    if (!success) throw new Error("Appwrite save failed (using fallback)");
 
     return { success: true, message: "Consent data saved successfully." };
   } catch (error) {

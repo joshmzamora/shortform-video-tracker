@@ -1,6 +1,6 @@
 "use server";
 
-import { Storage } from '@/lib/storage';
+import { appwriteService, Collections } from '@/lib/appwrite';
 import fs from 'fs-extra';
 import path from 'path';
 import { Video, formatCaption } from '@/lib/videos';
@@ -51,8 +51,30 @@ export async function saveSessionData(data: SessionData[]) {
   }
 
   try {
-    const success = await Storage.Sessions.save(data);
-    if (!success) throw new Error("Storage write failed");
+    // For bulk save, we might want to iterate or save as one big document.
+    // Given the new schema (interactions), we should probably save them individually?
+    // But this function is usually called at the END.
+    // If we already streamed them, this might be duplicate?
+    // The SessionPage calls this as a backup.
+    // Let's save it as a "Completed Session" summary or just ignore if streaming works?
+    // For safety, let's save it.
+
+    // We can save the whole array as one document in 'sessions' collection for easy backup.
+    // Wait, 'sessions' collection was for interactions?
+    // Let's use the same collection but maybe a different structure?
+    // Actually, let's just loop and save them if they aren't saved?
+    // No, that's complex.
+
+    // Simplest: Save the entire session array as a single document with a 'type': 'full_session_backup'
+    const backupData = {
+      participantId: data[0]?.participantId,
+      type: 'full_session_backup',
+      timestamp: new Date().toISOString(),
+      events: data
+    };
+
+    const success = await appwriteService.saveDocument(Collections.Sessions, backupData);
+    if (!success) throw new Error("Appwrite save failed");
 
     return { success: true, message: "Data saved successfully." };
   } catch (error) {
@@ -69,8 +91,8 @@ export async function saveInteraction(data: SessionData) {
   }
 
   try {
-    const success = await Storage.Sessions.save(data);
-    if (!success) throw new Error("Storage write failed");
+    const success = await appwriteService.saveDocument(Collections.Sessions, data);
+    if (!success) throw new Error("Appwrite save failed");
 
     return { success: true, message: "Interaction saved." };
   } catch (error) {
