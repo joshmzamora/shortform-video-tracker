@@ -207,17 +207,22 @@ function SessionPage() {
 
   if (sessionState === 'running') {
     return (
-      <div className="relative h-screen w-screen bg-black">
+      <div className="relative h-[100dvh] w-screen bg-black overflow-hidden">
         <Carousel
           setApi={setApi}
-          opts={{ align: "start" }}
+          opts={{
+            align: "start",
+            axis: "y",
+            dragFree: false,
+            containScroll: "trimSnaps"
+          }}
           plugins={[WheelGesturesPlugin()]}
           orientation="vertical"
-          className="h-full"
+          className="h-full w-full"
         >
           <CarouselContent className="-mt-0 h-full">
             {videoList.map((video, index) => (
-              <CarouselItem key={video.id} className="pt-0">
+              <CarouselItem key={video.id} className="pt-0 h-full w-full">
                 <VideoPlayer
                   video={video}
                   isActive={index === currentVideoIndex}
@@ -231,7 +236,7 @@ function SessionPage() {
         <SessionTimer
           duration={SESSION_DURATION_SECONDS}
           onComplete={handleSessionComplete}
-          className="absolute top-4 right-4 z-10"
+          className="absolute top-4 right-4 z-50"
         />
       </div>
     );
