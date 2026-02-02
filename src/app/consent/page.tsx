@@ -10,6 +10,8 @@ import { Label } from '@/components/ui/label';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Separator } from '@/components/ui/separator';
 import { Loader2 } from 'lucide-react';
+import { saveConsentData } from './actions';
+import { useToast } from '@/hooks/use-toast';
 
 export default function ConsentPage() {
   const router = useRouter();
@@ -22,6 +24,7 @@ export default function ConsentPage() {
   const [pocName, setPocName] = useState('');
   const [currentDate, setCurrentDate] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const { toast } = useToast();
 
   useEffect(() => {
     setCurrentDate(new Date().toLocaleDateString());

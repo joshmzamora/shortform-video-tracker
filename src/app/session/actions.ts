@@ -28,7 +28,7 @@ export async function getVideos(): Promise<{ success: boolean; videos: Video[]; 
         user: '@LocalVideo',
         caption: formatCaption(file),
         genre: 'General',
-        src: `/videos/${file}`
+        src: `/videos/${encodeURIComponent(file)}`
       }));
 
     if (videos.length === 0) {

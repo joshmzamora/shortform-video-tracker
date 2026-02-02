@@ -44,5 +44,9 @@ export const Storage = {
   Questionnaires: {
     save: (data: any) => saveRecord(QUESTIONNAIRES_FILE, data),
     getAll: () => getRecords(QUESTIONNAIRES_FILE),
+  },
+  Consents: {
+    save: (data: any) => saveRecord(CONSENTS_FILE, data),
+    getAll: () => getRecords(CONSENTS_FILE),
   }
 };
