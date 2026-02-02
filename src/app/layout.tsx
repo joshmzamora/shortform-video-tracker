@@ -7,6 +7,8 @@ export const metadata: Metadata = {
   description: 'A user engagement study platform for short-form video.',
 };
 
+import { SessionProvider } from '@/lib/session-context';
+
 export default function RootLayout({
   children,
 }: Readonly<{
@@ -20,7 +22,9 @@ export default function RootLayout({
         <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;700&display=swap" rel="stylesheet" />
       </head>
       <body className="font-body antialiased">
-        {children}
+        <SessionProvider>
+          {children}
+        </SessionProvider>
         <Toaster />
       </body>
     </html>

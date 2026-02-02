@@ -11,11 +11,12 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Separator } from '@/components/ui/separator';
 import { Loader2 } from 'lucide-react';
 import { saveConsentData } from './actions';
-import { ClientStorage, STORAGE_KEYS } from '@/lib/client-storage';
+import { useSession } from '@/lib/session-context';
 import { useToast } from '@/hooks/use-toast';
 
 export default function ConsentPage() {
   const router = useRouter();
+  const { setParticipantId: setContextParticipantId, setConsent } = useSession();
 
   const [agreed, setAgreed] = useState(false);
   const [parentalConsentAgreed, setParentalConsentAgreed] = useState(false);
@@ -25,6 +26,7 @@ export default function ConsentPage() {
   const [pocName, setPocName] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const currentDate = new Date().toLocaleDateString();
+  const { toast } = useToast();
 
   const handleContinue = async () => {
     if (agreed && parentalConsentAgreed && participantId.trim() && participantName.trim() && !isLoading) {
@@ -40,30 +42,21 @@ export default function ConsentPage() {
         timestamp: new Date().toISOString(),
       };
 
-      // 1. Try Server Save (Best Effort for Localhost)
-      // We keep this because on localhost it's nice to have files.
+      // 1. Update In-Memory Session Context (Secure, non-persistent)
+      setContextParticipantId(participantId.trim());
+      setConsent(consentData);
+
+      // 2. Transmit to Server Immediately
       let serverSuccess = false;
       try {
         const result = await saveConsentData(consentData);
         serverSuccess = result.success;
       } catch (e) {
-        console.warn("Server save failed (expected on Vercel)");
+        console.warn("Server transmission failed");
       }
 
-      // 2. ALWAYS Save to Client Storage (Reliable)
-      ClientStorage.save(STORAGE_KEYS.CONSENTS, consentData);
-
-      // 3. Fallback Download (Only if both fail? No, only if server fails is enough for backup)
-      // Actually, if we have ClientStorage, we don't strictly NEED the download, 
-      // but the user seemed to like the "safe" feeling.
-      // Let's only download if we are NOT on localhost (heuristic?) or just always download?
-      // User said "Admin dashboard needs to work everywhere".
-      // If we rely on ClientStorage, the Admin Dashboard on the SAME device works.
-      // If we want Admin on DIFFERENT device, we need the file download.
-      // Let's keep the file download logic but make it optional or "toast action".
-
+      // 3. Fallback Transmission: Secure Download
       if (!serverSuccess) {
-        // Auto-download as backup for "Transfer to Admin"
         const blob = new Blob([JSON.stringify(consentData, null, 2)], { type: 'application/json' });
         const url = URL.createObjectURL(blob);
         const a = document.createElement('a');
@@ -75,8 +68,14 @@ export default function ConsentPage() {
         URL.revokeObjectURL(url);
 
         toast({
-          title: "Saved to Device",
-          description: "Data saved to browser storage & downloaded (keep this file!).",
+          title: "Transmission Error - Manual Backup",
+          description: "Server unavailable. Data downloaded securely for manual transfer.",
+          variant: "destructive"
+        });
+      } else {
+        toast({
+          title: "Consent Recorded",
+          description: "Data securely transmitted to server.",
         });
       }
 

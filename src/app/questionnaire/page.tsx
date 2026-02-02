@@ -8,7 +8,7 @@ import { Label } from '@/components/ui/label';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { useToast } from '@/hooks/use-toast';
 import { saveQuestionnaireData } from './actions';
-import { ClientStorage, STORAGE_KEYS } from '@/lib/client-storage';
+import { useSession } from '@/lib/session-context';
 import { Loader2, PartyPopper } from 'lucide-react';
 import { Separator } from '@/components/ui/separator';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -21,24 +21,24 @@ type Question = {
 };
 
 const questions: Question[] = [
-    { id: 'q1', dimension: 'Preoccupation', text: "I find myself thinking about social media even when I'm not using it." },
-    { id: 'q2', dimension: 'Preoccupation', text: "I feel an urge to check social media as soon as I wake up." },
-    { id: 'q3', dimension: 'Preoccupation', text: "I plan my day around when I can use social media." },
-    { id: 'q4', dimension: 'Tolerance', text: "I need to spend more and more time on social media to feel satisfied." },
-    { id: 'q5', dimension: 'Tolerance', text: "I find myself scrolling for longer than I originally intended." },
-    { id: 'q6', dimension: 'Tolerance', text: "The time I spend on social media has increased over the past year." },
-    { id: 'q7', dimension: 'Withdrawal', text: "I feel restless or irritable when I can't access social media." },
-    { id: 'q8', dimension: 'Withdrawal', text: "I feel anxious if I haven't checked my notifications for a while." },
-    { id: 'q9', dimension: 'Withdrawal', text: "When I am not on social media, I feel out of touch with everything." },
-    { id: 'q10', dimension: 'Persistence', text: "I have tried to spend less time on social media but failed." },
-    { id: 'q11', dimension: 'Persistence', text: "My friends or family have told me I should use social media less." },
-    { id: 'q12', dimension: 'Persistence', text: "I find it difficult to stop using social media even when I know I should." },
-    { id: 'q13', dimension: 'Mood Modification', text: "I use social media to escape from negative feelings or problems." },
-    { id: 'q14', dimension: 'Mood Modification', text: "Scrolling through my feed makes me feel better when I'm down." },
-    { id: 'q15', dimension: 'Mood Modification', text: "I feel a 'high' or a 'buzz' when I get likes or positive comments." },
-    { id: 'q16', dimension: 'Conflict', text: "My use of social media has caused arguments with my family or friends." },
-    { id: 'q17', dimension: 'Conflict', text: "I have neglected my schoolwork or chores because I was on social media." },
-    { id: 'q18', dimension: 'Conflict', text: "I prefer spending time on social media over spending time with others in person." },
+  { id: 'q1', dimension: 'Preoccupation', text: "I find myself thinking about social media even when I'm not using it." },
+  { id: 'q2', dimension: 'Preoccupation', text: "I feel an urge to check social media as soon as I wake up." },
+  { id: 'q3', dimension: 'Preoccupation', text: "I plan my day around when I can use social media." },
+  { id: 'q4', dimension: 'Tolerance', text: "I need to spend more and more time on social media to feel satisfied." },
+  { id: 'q5', dimension: 'Tolerance', text: "I find myself scrolling for longer than I originally intended." },
+  { id: 'q6', dimension: 'Tolerance', text: "The time I spend on social media has increased over the past year." },
+  { id: 'q7', dimension: 'Withdrawal', text: "I feel restless or irritable when I can't access social media." },
+  { id: 'q8', dimension: 'Withdrawal', text: "I feel anxious if I haven't checked my notifications for a while." },
+  { id: 'q9', dimension: 'Withdrawal', text: "When I am not on social media, I feel out of touch with everything." },
+  { id: 'q10', dimension: 'Persistence', text: "I have tried to spend less time on social media but failed." },
+  { id: 'q11', dimension: 'Persistence', text: "My friends or family have told me I should use social media less." },
+  { id: 'q12', dimension: 'Persistence', text: "I find it difficult to stop using social media even when I know I should." },
+  { id: 'q13', dimension: 'Mood Modification', text: "I use social media to escape from negative feelings or problems." },
+  { id: 'q14', dimension: 'Mood Modification', text: "Scrolling through my feed makes me feel better when I'm down." },
+  { id: 'q15', dimension: 'Mood Modification', text: "I feel a 'high' or a 'buzz' when I get likes or positive comments." },
+  { id: 'q16', dimension: 'Conflict', text: "My use of social media has caused arguments with my family or friends." },
+  { id: 'q17', dimension: 'Conflict', text: "I have neglected my schoolwork or chores because I was on social media." },
+  { id: 'q18', dimension: 'Conflict', text: "I prefer spending time on social media over spending time with others in person." },
 ];
 
 const likertOptions = [
@@ -53,35 +53,41 @@ function QuestionnaireContent() {
   const { toast } = useToast();
   const searchParams = useSearchParams();
   const router = useRouter();
-  
+  const { participantId: contextParticipantId, setQuestionnaire } = useSession();
+
   const [participantId, setParticipantId] = useState('');
-  const [answers, setAnswers] = useState<{[key: string]: string}>({});
+  const [answers, setAnswers] = useState<{ [key: string]: string }>({});
   const [submissionState, setSubmissionState] = useState<'idle' | 'submitting' | 'submitted'>('idle');
 
   useEffect(() => {
-    const id = searchParams.get('participantId');
-    if (id) {
-      setParticipantId(id);
+    // Prefer Context ID if available, otherwise URL param
+    if (contextParticipantId) {
+      setParticipantId(contextParticipantId);
+    } else {
+      const id = searchParams.get('participantId');
+      if (id) {
+        setParticipantId(id);
+      }
     }
-  }, [searchParams]);
+  }, [searchParams, contextParticipantId]);
 
   const handleAnswerChange = (questionId: string, value: string) => {
     setAnswers(prev => ({ ...prev, [questionId]: value }));
   };
-  
+
   const allQuestionsAnswered = Object.keys(answers).length === questions.length;
   const canSubmit = participantId.trim() !== '' && allQuestionsAnswered;
 
   const handleSubmit = async () => {
     if (!canSubmit) {
-        toast({
-            variant: "destructive",
-            title: "Incomplete Form",
-            description: "Please enter your Participant ID and answer all questions before submitting.",
-        });
-        return;
+      toast({
+        variant: "destructive",
+        title: "Incomplete Form",
+        description: "Please enter your Participant ID and answer all questions before submitting.",
+      });
+      return;
     }
-    
+
     setSubmissionState('submitting');
 
     const dataToSave = {
@@ -90,7 +96,10 @@ function QuestionnaireContent() {
       timestamp: new Date().toISOString(),
     };
 
-    // 1. Try Server Save
+    // 1. Save to In-Memory Context
+    setQuestionnaire(dataToSave);
+
+    // 2. Transmit to Server
     let serverSuccess = false;
     try {
       const result = await saveQuestionnaireData(dataToSave);
@@ -99,25 +108,28 @@ function QuestionnaireContent() {
       console.warn("Server save failed");
     }
 
-    // 2. Client Save
-    ClientStorage.save(STORAGE_KEYS.QUESTIONNAIRES, dataToSave);
-
     // 3. Download if Server Fail
     if (!serverSuccess) {
-       const blob = new Blob([JSON.stringify(dataToSave, null, 2)], { type: 'application/json' });
-       const url = URL.createObjectURL(blob);
-       const a = document.createElement('a');
-       a.href = url;
-       a.download = `questionnaire-${participantId.trim()}.json`;
-       document.body.appendChild(a);
-       a.click();
-       document.body.removeChild(a);
-       URL.revokeObjectURL(url);
+      const blob = new Blob([JSON.stringify(dataToSave, null, 2)], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `questionnaire-${participantId.trim()}.json`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
 
-       toast({
-         title: "Saved to Device",
-         description: "Data saved to browser storage & downloaded.",
-       });
+      toast({
+        title: "Transmission Error - Manual Backup",
+        description: "Server unavailable. Data downloaded securely for manual transfer.",
+        variant: "destructive"
+      });
+    } else {
+      toast({
+        title: "Questionnaire Submitted",
+        description: "Responses securely transmitted.",
+      });
     }
 
     setSubmissionState('submitted');
@@ -127,19 +139,19 @@ function QuestionnaireContent() {
   };
 
   if (submissionState === 'submitted') {
-      return (
-        <main className="flex min-h-screen items-center justify-center bg-background p-4">
-          <Card className="w-full max-w-lg text-center shadow-lg">
-            <CardHeader>
-              <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-accent/50">
-                <PartyPopper className="h-8 w-8 text-accent-foreground" />
-              </div>
-              <CardTitle className="mt-4 text-2xl font-headline">Thank You!</CardTitle>
-              <CardDescription>Your responses have been recorded. Redirecting to the experiment...</CardDescription>
-            </CardHeader>
-          </Card>
-        </main>
-      );
+    return (
+      <main className="flex min-h-screen items-center justify-center bg-background p-4">
+        <Card className="w-full max-w-lg text-center shadow-lg">
+          <CardHeader>
+            <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-accent/50">
+              <PartyPopper className="h-8 w-8 text-accent-foreground" />
+            </div>
+            <CardTitle className="mt-4 text-2xl font-headline">Thank You!</CardTitle>
+            <CardDescription>Your responses have been recorded. Redirecting to the experiment...</CardDescription>
+          </CardHeader>
+        </Card>
+      </main>
+    );
   }
 
 
@@ -155,49 +167,49 @@ function QuestionnaireContent() {
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-8">
-            <div className="space-y-4">
-                <div>
-                  <Label htmlFor="participantId" className="font-bold text-base">Participant ID</Label>
-                  <Input
-                    id="participantId"
-                    placeholder="Enter your assigned participant ID"
-                    value={participantId}
-                    onChange={(e) => setParticipantId(e.target.value)}
-                    className="mt-2"
-                    required
-                  />
-                </div>
+          <div className="space-y-4">
+            <div>
+              <Label htmlFor="participantId" className="font-bold text-base">Participant ID</Label>
+              <Input
+                id="participantId"
+                placeholder="Enter your assigned participant ID"
+                value={participantId}
+                onChange={(e) => setParticipantId(e.target.value)}
+                className="mt-2"
+                required
+              />
             </div>
-            
-            <Separator />
+          </div>
 
-            <div className="space-y-8">
-                {questions.map((q, index) => (
-                    <div key={q.id} className="space-y-4">
-                        <Label className="font-semibold text-base">{index + 1}. {q.text}</Label>
-                        <RadioGroup 
-                            className="flex flex-col space-y-2 md:flex-row md:space-y-0 md:items-center md:gap-x-8"
-                            onValueChange={(value) => handleAnswerChange(q.id, value)}
-                            value={answers[q.id]}
-                        >
-                            {likertOptions.map(option => (
-                                <div key={option.id} className="flex items-center space-x-2">
-                                    <RadioGroupItem value={option.id} id={`${q.id}-${option.id}`} />
-                                    <Label htmlFor={`${q.id}-${option.id}`} className="font-normal cursor-pointer">{option.label}</Label>
-                                </div>
-                            ))}
-                        </RadioGroup>
+          <Separator />
+
+          <div className="space-y-8">
+            {questions.map((q, index) => (
+              <div key={q.id} className="space-y-4">
+                <Label className="font-semibold text-base">{index + 1}. {q.text}</Label>
+                <RadioGroup
+                  className="flex flex-col space-y-2 md:flex-row md:space-y-0 md:items-center md:gap-x-8"
+                  onValueChange={(value) => handleAnswerChange(q.id, value)}
+                  value={answers[q.id]}
+                >
+                  {likertOptions.map(option => (
+                    <div key={option.id} className="flex items-center space-x-2">
+                      <RadioGroupItem value={option.id} id={`${q.id}-${option.id}`} />
+                      <Label htmlFor={`${q.id}-${option.id}`} className="font-normal cursor-pointer">{option.label}</Label>
                     </div>
-                ))}
-            </div>
+                  ))}
+                </RadioGroup>
+              </div>
+            ))}
+          </div>
         </CardContent>
         <CardFooter>
           <Button className="w-full" onClick={handleSubmit} disabled={!canSubmit || submissionState === 'submitting'}>
             {submissionState === 'submitting' ? (
-                <>
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    Submitting...
-                </>
+              <>
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                Submitting...
+              </>
             ) : "Submit Responses"}
           </Button>
         </CardFooter>

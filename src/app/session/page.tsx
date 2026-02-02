@@ -12,7 +12,7 @@ import { VideoPlayer, type VideoInteraction } from '@/components/video-player';
 import { SessionTimer } from '@/components/session-timer';
 import { type Video } from '@/lib/videos';
 import { saveSessionData, getVideos } from './actions';
-import { ClientStorage, STORAGE_KEYS } from '@/lib/client-storage';
+import { useSession } from '@/lib/session-context';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Loader2, PartyPopper, ServerCrash } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
@@ -34,7 +34,7 @@ type SessionState = 'initializing' | 'running' | 'completed' | 'exporting' | 'er
 function SessionPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const participantId = searchParams.get('participantId');
+  const { participantId: contextParticipantId, sessionEvents, addSessionEvent, clearSession } = useSession();
   const { toast } = useToast();
 
   const [api, setApi] = useState<CarouselApi>();
@@ -42,6 +42,9 @@ function SessionPage() {
   const [sessionData, setSessionData] = useState<SessionData[]>([]);
   const [currentVideoIndex, setCurrentVideoIndex] = useState(0);
   const [videoList, setVideoList] = useState<Video[]>([]);
+
+  // Use either context ID or URL param
+  const participantId = contextParticipantId || searchParams.get('participantId');
 
   const watchTimeStartRef = useRef<number>(0);
   const sessionDataRef = useRef<SessionData[]>([]);
@@ -95,8 +98,14 @@ function SessionPage() {
       genre: video.genre,
       timestamp: new Date().toISOString(),
     };
+
+    // Update local state for immediate feedback/export
     setSessionData(prevData => [...prevData, newRecord]);
-  }, [participantId, videoList]);
+
+    // Update Global Context (In-Memory Buffer)
+    addSessionEvent(newRecord);
+
+  }, [participantId, videoList, addSessionEvent]);
 
   const getWatchTime = useCallback(() => {
     if (watchTimeStartRef.current === 0) return 0;
@@ -121,7 +130,10 @@ function SessionPage() {
     const finalData = [...sessionDataRef.current, finalViewRecord];
     setSessionData(finalData);
 
-    // 1. Try Server Save
+    // Sync final event to context
+    addSessionEvent(finalViewRecord);
+
+    // 1. Try Server Transmission
     let serverSuccess = false;
     try {
       const result = await saveSessionData(finalData);
@@ -130,33 +142,38 @@ function SessionPage() {
       console.warn("Server save failed");
     }
 
-    // 2. Client Save
-    // Sessions are arrays, we wrap them or just save the array?
-    // ClientStorage.save appends the `data` to the list.
-    // If we pass an array, we get [[session1_events], [session2_events]]
-    ClientStorage.save(STORAGE_KEYS.SESSIONS, finalData);
-
-    // 3. Download if Server Fail
+    // 2. Fallback Transmission: Secure Download
     if (!serverSuccess) {
-       const blob = new Blob([JSON.stringify(finalData, null, 2)], { type: 'application/json' });
-       const url = URL.createObjectURL(blob);
-       const a = document.createElement('a');
-       a.href = url;
-       a.download = `session-${participantId}.json`;
-       document.body.appendChild(a);
-       a.click();
-       document.body.removeChild(a);
-       URL.revokeObjectURL(url);
+      const blob = new Blob([JSON.stringify(finalData, null, 2)], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `session-${participantId}.json`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
 
-       toast({
-         title: "Saved to Device",
-         description: "Data saved to browser storage & downloaded.",
-       });
+      toast({
+        title: "Transmission Error - Manual Backup",
+        description: "Server unavailable. Data downloaded securely for manual transfer.",
+        variant: "destructive"
+      });
+    } else {
+      toast({
+        title: "Session Completed",
+        description: "Activity log transmitted to server.",
+      });
     }
 
-    setSessionState('completed');
+    // Clear sensitive session data from memory after transmission
+    // We wait a moment so the user sees the "Completed" screen
+    setTimeout(() => {
+      clearSession();
+      setSessionState('completed');
+    }, 500);
 
-  }, [currentVideoIndex, getWatchTime, participantId, toast, videoList]);
+  }, [currentVideoIndex, getWatchTime, participantId, toast, videoList, addSessionEvent, clearSession]);
 
   useEffect(() => {
     if (!api || videoList.length === 0) return;
