@@ -149,16 +149,11 @@ export default function AdminPage() {
                       <TableCell>{formatDate(c.timestamp)}</TableCell>
                       <TableCell>{c.parentalConsentAgreed ? "Yes" : "No"}</TableCell>
                       <TableCell>
-                        {/* We need to pass the data object directly or via memory since we can't look it up in storage */}
                         <Button variant="link" onClick={() => {
-                          // Quick hack: Open print window and inject data via context or URL? 
-                          // URL is too small. 
-                          // We'll use a new window with a blob URL for the print page or just render it here in a modal?
-                          // Simplest: Render in a new window by passing data via localStorage? NO, forbidden.
-                          // Pass via window.opener?
-                          alert("Printing from imported data is restricted. Please print the original PDF/JSON.");
+                            // Use window.open to open the print/download page
+                            window.open(`/admin/print-consent?id=${c.participantId}`, '_blank');
                         }}>
-                          View Details
+                          Download PDF
                         </Button>
                       </TableCell>
                     </TableRow>
