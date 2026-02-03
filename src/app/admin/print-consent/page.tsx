@@ -161,24 +161,6 @@ function PrintConsentContent() {
                 <p className="font-bold mb-2">Participant ID:</p>
                 <div className="border-b border-black pb-1 font-mono text-lg">{consent.participantId}</div>
                 </div>
-
-                <div>
-                <p className="font-bold mb-2">Witness Name:</p>
-                <div className="border-b border-black pb-1 font-mono text-lg">{consent.witnessName || "N/A"}</div>
-                </div>
-                <div>
-                <p className="font-bold mb-2">Date:</p>
-                <div className="border-b border-black pb-1 font-mono text-lg">{formattedDate}</div>
-                </div>
-
-                <div>
-                <p className="font-bold mb-2">Person Obtaining Consent:</p>
-                <div className="border-b border-black pb-1 font-mono text-lg">{consent.pocName || "N/A"}</div>
-                </div>
-                <div>
-                <p className="font-bold mb-2">Date:</p>
-                <div className="border-b border-black pb-1 font-mono text-lg">{formattedDate}</div>
-                </div>
             </div>
 
             <div className="mt-12 text-xs text-gray-500">

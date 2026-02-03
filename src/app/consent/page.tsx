@@ -22,8 +22,6 @@ export default function ConsentPage() {
   const [parentalConsentAgreed, setParentalConsentAgreed] = useState(false);
   const [participantId, setParticipantId] = useState('');
   const [participantName, setParticipantName] = useState('');
-  const [witnessName, setWitnessName] = useState('');
-  const [pocName, setPocName] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const currentDate = new Date().toLocaleDateString();
   const { toast } = useToast();
@@ -35,8 +33,6 @@ export default function ConsentPage() {
       const consentData = {
         participantId: participantId.trim(),
         participantName: participantName.trim(),
-        witnessName: witnessName.trim(),
-        pocName: pocName.trim(),
         parentalConsentAgreed,
         agreed,
         timestamp: new Date().toISOString(),
@@ -191,24 +187,6 @@ export default function ConsentPage() {
               <div className="space-y-2">
                 <Label htmlFor="participant-name">Name of Participant (print):</Label>
                 <Input id="participant-name" value={participantName} onChange={(e) => setParticipantName(e.target.value)} placeholder="John Doe" />
-                <p className="text-sm text-muted-foreground">Signature: (type name to sign)</p>
-              </div>
-              <div className="space-y-2">
-                <Label>Date:</Label>
-                <Input value={currentDate} readOnly disabled />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="witness-name">Name of Witness (print):</Label>
-                <Input id="witness-name" value={witnessName} onChange={(e) => setWitnessName(e.target.value)} placeholder="Jane Smith" />
-                <p className="text-sm text-muted-foreground">Signature: (type name to sign)</p>
-              </div>
-              <div className="space-y-2">
-                <Label>Date:</Label>
-                <Input value={currentDate} readOnly disabled />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="poc-name">Person Obtaining Consent:</Label>
-                <Input id="poc-name" value={pocName} onChange={(e) => setPocName(e.target.value)} placeholder="Dr. Investigator" />
                 <p className="text-sm text-muted-foreground">Signature: (type name to sign)</p>
               </div>
               <div className="space-y-2">

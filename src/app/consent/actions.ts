@@ -5,8 +5,6 @@ import { appwriteService, Collections } from '@/lib/appwrite';
 export type ConsentData = {
   participantId: string;
   participantName: string;
-  witnessName: string;
-  pocName: string;
   parentalConsentAgreed: boolean;
   agreed: boolean;
   timestamp: string;

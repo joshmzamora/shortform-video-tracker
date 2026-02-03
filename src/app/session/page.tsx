@@ -210,7 +210,7 @@ function SessionPage() {
       <div className="relative h-[100dvh] w-screen bg-black overflow-hidden">
         <Carousel
           setApi={setApi}
-          opts={{
+          opts={{ 
             align: "start",
             axis: "y",
             dragFree: false,
