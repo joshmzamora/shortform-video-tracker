@@ -3,8 +3,8 @@ import { Toaster } from "@/components/ui/toaster"
 import './globals.css';
 
 export const metadata: Metadata = {
-  title: 'VideoFlow Insights',
-  description: 'A user engagement study platform for short-form video.',
+  title: 'AP Research SFV Study',
+  description: 'An AP Research user engagement study platform for short-form video.',
 };
 
 import { SessionProvider } from '@/lib/session-context';
