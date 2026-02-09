@@ -89,84 +89,96 @@ function PrintConsentContent() {
 
             <div className="grid grid-cols-2 gap-4 text-sm mb-6">
             <div>
-                <h3 className="font-bold">Principle Investigator:</h3>
-                <p>Joshua Zamora</p>
-                <p>Barbers Hill High School</p>
-                <p>(832) 984-2275</p>
+                <h3 className="font-bold">Principle Investigator, Affiliation and Contact Information:</h3>
+                <p>Joshua Zamora, Barbers Hill High School, (832) 984-2275</p>
             </div>
             <div className="text-right">
                 <h3 className="font-bold">Institutional Contact:</h3>
-                <p>Institutional Review Board</p>
-                <p>(281) 576-2221</p>
+                <p>Institutional Review Board, Barbers Hill High School, (281) 576-2221</p>
             </div>
             </div>
+            
+            <Separator className="my-4"/>
 
-            <Separator className="my-4" />
-
-            <div className="space-y-4 text-sm text-justify">
-            <p><strong>1. Introduction and Purpose:</strong> I want to understand if there is a link between what students watch on social media apps and their feelings about using those apps.</p>
-
-            <p><strong>2. Description:</strong> Participants will complete a questionnaire, watch 10 minutes of video content, and complete a final questionnaire.</p>
-
-            <p><strong>3. Participation:</strong> Approx. 20 Barbers Hill High School students. One visit, ~30 mins.</p>
-
-            <p><strong>4. Risks:</strong> Mild emotional discomfort possible due to self-reflection or content.</p>
-
-            <p><strong>5. Benefits:</strong> Better understanding of treatment methods for short-form video addiction.</p>
-
-            <p><strong>6. Confidentiality:</strong> Responses are anonymous. Data aggregated.</p>
-
-            <p><strong>7. Authorization:</strong> By signing, you authorize use of records for education/publication.</p>
-
-            <p><strong>8. Compensation:</strong> None.</p>
-
-            <p><strong>9. Voluntary:</strong> Participation is voluntary. Refusal does not affect benefits.</p>
-
-            <p><strong>10. Withdrawal:</strong> May withdraw at any time without penalty.</p>
-            </div>
-
-            <Separator className="my-8" />
-
-            <div className="space-y-6 mt-8">
-            <div className="flex items-center gap-2">
-                <div className="h-5 w-5 border border-black flex items-center justify-center">
-                {consent.parentalConsentAgreed ? "✓" : ""}
-                </div>
-                <span className="font-bold">I have obtained parental consent to participate in this study.</span>
-            </div>
-
-            <p>I voluntarily agree to participate in this research program and I understand that I will be given a copy of this signed Consent Form.</p>
-
-            <div className="flex items-center gap-8">
-                <div className="flex items-center gap-2">
-                <div className="h-5 w-5 border border-black flex items-center justify-center">
-                    {consent.agreed ? "✓" : ""}
-                </div>
-                <span>Yes, I agree</span>
-                </div>
-                <div className="flex items-center gap-2">
-                <div className="h-5 w-5 border border-black flex items-center justify-center">
-                    {!consent.agreed ? "✓" : ""}
-                </div>
-                <span>No</span>
-                </div>
-            </div>
-
-            <div className="grid grid-cols-2 gap-12 pt-8">
+            <div className="space-y-4 text-sm">
                 <div>
-                <p className="font-bold mb-2">Participant Name:</p>
-                <div className="border-b border-black pb-1 font-mono text-lg">{consent.participantName}</div>
+                    <h3 className="font-bold mb-1">1. Introduction and Purpose of the Study</h3>
+                    <p>I want to understand if there is a link between what students watch on social media apps (like TikTok or Instagram Reels) and their feelings about using those apps. I am trying to find out if certain types of short videos (like funny clips, news clips, or aspirational clips) are more related to compulsive or "addictive" scrolling habits. The goal is to help counselors and educators give better, more specific advice to students instead of just saying "don't scroll."</p>
                 </div>
                 <div>
-                <p className="font-bold mb-2">Participant ID:</p>
-                <div className="border-b border-black pb-1 font-mono text-lg">{consent.participantId}</div>
+                    <h3 className="font-bold mb-1">2. Description of the Research</h3>
+                    <p>When you enter into the program, you will be asked to complete a questionnaire. You will then be asked to participate in watching 10 minutes of short form video content. After you have completed the intervention, you will be asked to complete one more questionnaire.</p>
+                </div>
+                <div>
+                    <h3 className="font-bold mb-1">3. Subject Participation</h3>
+                    <p>We estimate that 20 participants who are Barbers Hill High School students will enroll in this study. Participants must have motor ability in both hands and can verbally communicate. Your participation will involve one visit, approximately 30 minutes in length.</p>
+                </div>
+                <div>
+                    <h3 className="font-bold mb-1">4. Potential Risks and Discomforts</h3>
+                    <p>There are no known major risks to this study. However, some participants may feel mild emotional discomfort. The questionaire asks questions about social media habits that might make some students feel self-conscious. The experiment includes content that could be perceived as negative or upsetting (like news clips or "doomscrolling" content).</p>
+                </div>
+                <div>
+                    <h3 className="font-bold mb-1">5. Potential Benefits</h3>
+                    <p>People who participate in this study may have a better understanding of additional treatment methods for short form video content specifically that enable individuals to experience and increase their overall sense of well being.</p>
+                </div>
+                <div>
+                    <h3 className="font-bold mb-1">6. Confidentiality:</h3>
+                    <p>Your responses and experiment results are completely anonymous. No personal identifying information will be collected except grade level. Data will be aggregated via statistical software. Quantitative and qualitative results will be shared with the AP Research department and College Board.</p>
+                </div>
+                <div>
+                    <h3 className="font-bold mb-1">7. Authorization</h3>
+                    <p>By signing this form, you authorize the use of any records, any observations, and findings found during the course of this study for education, publication and/or presentation.</p>
+                </div>
+                <div>
+                    <h3 className="font-bold mb-1">8. Compensation</h3>
+                    <p>Subjects will not be compensated for participation in this study.</p>
+                </div>
+                <div>
+                    <h3 className="font-bold mb-1">9. Voluntary Participation and Authorization</h3>
+                    <p>Your decision to participate in this study is completely voluntary. If you decide to not participate in this study, it will not affect the care, services, or benefits to which you are entitled.</p>
+                </div>
+                <div>
+                    <h3 className="font-bold mb-1">10. Withdrawal from the Study and/or Withdrawal of Authorization:</h3>
+                    <p>If you decide to participate in this study, you may withdraw from your participation at any time during the questionnaires and experiment without penalty. Any data collected before withdrawal will NOT be included in the study and destroyed.</p>
                 </div>
             </div>
 
-            <div className="mt-12 text-xs text-gray-500">
-                <p>Electronically signed and recorded at {new Date(consent.timestamp).toLocaleString()}</p>
-                <p>ShortForm Video Tracker System v1.0</p>
+            <Separator className="my-6"/>
+
+            <div className="space-y-4">
+                <div className="flex items-center gap-2">
+                    <div className="h-4 w-4 border border-black flex items-center justify-center text-xs">
+                        {consent.agreed ? 'X' : ''}
+                    </div>
+                    <p className="text-sm font-bold">
+                        I have read and understand the above information and agree to participate in the study.
+                    </p>
+                </div>
+                
+                {consent.parentalConsentAgreed && (
+                    <div className="flex items-center gap-2">
+                         <div className="h-4 w-4 border border-black flex items-center justify-center text-xs">X</div>
+                         <p className="text-sm font-bold">
+                             I am under 18 and have obtained parental consent to participate.
+                         </p>
+                    </div>
+                )}
             </div>
+
+            <div className="grid grid-cols-2 gap-8 mt-12">
+                <div>
+                    <div className="border-b border-black mb-2 pb-1 font-script text-lg">{consent.participantName}</div>
+                    <p className="text-xs uppercase">Participant Signature</p>
+                </div>
+                <div>
+                    <div className="border-b border-black mb-2 pb-1">{formattedDate}</div>
+                    <p className="text-xs uppercase">Date</p>
+                </div>
+            </div>
+            
+            <div className="mt-8 text-xs text-gray-500">
+                <p>Participant ID: {consent.participantId}</p>
+                <p>Timestamp: {consent.timestamp}</p>
             </div>
         </div>
       </div>

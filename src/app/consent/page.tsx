@@ -71,13 +71,12 @@ export default function ConsentPage() {
       } else {
         toast({
           title: "Consent Recorded",
-          description: "Data securely transmitted to server.",
+          description: "Data securely transmitted to server. You may now close this window.",
         });
       }
 
-      setTimeout(() => {
-        router.push(`/questionnaire?participantId=${encodeURIComponent(participantId.trim())}`);
-      }, 1000);
+      setIsLoading(false);
+      // No redirect as requested
     }
   };
 
@@ -93,6 +92,13 @@ export default function ConsentPage() {
           </CardDescription>
         </CardHeader>
         <CardContent>
+          <div className="mb-6 p-4 bg-yellow-50 border border-yellow-200 rounded-lg text-sm text-yellow-800 flex items-start">
+            <div className="mr-3 mt-0.5">⚠️</div>
+            <div>
+              <strong>Action Required:</strong> Please ensure your "Screen Time" (iOS) or "Digital Wellbeing" (Android) feature is enabled on your device. This will be needed immediately before the experiment begins.
+            </div>
+          </div>
+
           <ScrollArea className="h-[50vh] w-full rounded-md border p-4">
             <div className="space-y-6 text-sm">
               <div>
@@ -177,12 +183,15 @@ export default function ConsentPage() {
                 <Label htmlFor="participantId">Participant ID</Label>
                 <Input
                   id="participantId"
-                  placeholder="e.g., user_001"
+                  placeholder="e.g., School ID (12345)"
                   value={participantId}
                   onChange={(e) => setParticipantId(e.target.value)}
                   autoFocus
                   required
                 />
+                <p className="text-sm text-muted-foreground">
+                    This can be anything you want as long as you remember it. We suggest using your School ID since it's easy to remember.
+                </p>
               </div>
               <div className="space-y-2">
                 <Label htmlFor="participant-name">Name of Participant (print):</Label>

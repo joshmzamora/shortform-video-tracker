@@ -24,17 +24,17 @@ export default function Home() {
           <CardDescription className="text-center pt-1">Main Menu</CardDescription>
         </CardHeader>
         <CardContent className="flex flex-col gap-4 pt-4">
-          <Button size="lg" onClick={() => handleNavigation('/start')} disabled={!!loading}>
-            {loading === '/start' ? <Loader2 className="mr-2 animate-spin" /> : <PlaySquare className="mr-2" />}
-            {loading === '/start' ? 'Loading...' : 'Experiment'}
-          </Button>
           <Button size="lg" variant="outline" onClick={() => handleNavigation('/consent')} disabled={!!loading}>
              {loading === '/consent' ? <Loader2 className="mr-2 animate-spin" /> : <FileText className="mr-2" />}
              {loading === '/consent' ? 'Loading...' : 'Consent Form'}
           </Button>
-          <Button size="lg" variant="outline" onClick={() => handleNavigation('/questionnaire')} disabled={!!loading}>
-            {loading === '/questionnaire' ? <Loader2 className="mr-2 animate-spin" /> : <ListChecks className="mr-2" />}
-            {loading === '/questionnaire' ? 'Loading...' : 'Questionnaire'}
+          <Button size="lg" variant="ghost" className="opacity-50 cursor-not-allowed" disabled={true}>
+            <ListChecks className="mr-2" />
+            Questionnaire
+          </Button>
+          <Button size="lg" variant="ghost" className="opacity-50 cursor-not-allowed" disabled={true}>
+            <PlaySquare className="mr-2" />
+            Experiment
           </Button>
         </CardContent>
       </Card>
