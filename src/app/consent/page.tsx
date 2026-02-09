@@ -13,6 +13,15 @@ import { Loader2 } from 'lucide-react';
 import { saveConsentData } from './actions';
 import { useSession } from '@/lib/session-context';
 import { useToast } from '@/hooks/use-toast';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
 export default function ConsentPage() {
   const router = useRouter();
@@ -23,6 +32,7 @@ export default function ConsentPage() {
   const [participantId, setParticipantId] = useState('');
   const [participantName, setParticipantName] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [showSuccessDialog, setShowSuccessDialog] = useState(false);
   const currentDate = new Date().toLocaleDateString();
   const { toast } = useToast();
 
@@ -71,12 +81,12 @@ export default function ConsentPage() {
       } else {
         toast({
           title: "Consent Recorded",
-          description: "Data securely transmitted to server. You may now close this window.",
+          description: "Data securely transmitted to server.",
         });
       }
 
       setIsLoading(false);
-      // No redirect as requested
+      setShowSuccessDialog(true);
     }
   };
 
@@ -84,6 +94,35 @@ export default function ConsentPage() {
 
   return (
     <main className="flex min-h-screen items-center justify-center bg-background p-4 md:p-8">
+      <AlertDialog open={showSuccessDialog} onOpenChange={setShowSuccessDialog}>
+        <AlertDialogContent className="max-w-xl">
+          <AlertDialogHeader>
+            <AlertDialogTitle className="text-2xl">Thank You for Participating!</AlertDialogTitle>
+            <AlertDialogDescription className="space-y-4 pt-4 text-left">
+              <div className="bg-muted p-4 rounded-md border border-primary/20">
+                <p className="font-semibold text-foreground">Your Participant ID: <span className="text-primary text-lg">{participantId}</span></p>
+                <p className="text-sm mt-1">Please write this down or take a screenshot. You will need it for the next steps.</p>
+              </div>
+
+              <div className="space-y-2">
+                <p><strong>Reminder:</strong> Please ensure <strong>Screen Time</strong> (iOS) or <strong>Digital Wellbeing</strong> (Android) is enabled on your device right now.</p>
+
+                <p>The questionnaire and experiment are scheduled to begin in the next <strong>1-2 weeks</strong>.</p>
+
+                <p className="text-sm text-muted-foreground">
+                  Both the questionnaire and experiment can be done completely online on your own device in a quiet, undisturbed environment. More details will be provided prior to the experiment.
+                </p>
+
+                <p className="italic text-sm pt-2">Joshua Zamora, the researcher, will send out a notice to all participants when the experiment opens.</p>
+              </div>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogAction onClick={() => router.push('/')}>Return to Home</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
       <Card className="w-full max-w-4xl shadow-lg">
         <CardHeader>
           <CardTitle className="text-2xl font-headline text-center">Informed Consent Form</CardTitle>
@@ -190,7 +229,7 @@ export default function ConsentPage() {
                   required
                 />
                 <p className="text-sm text-muted-foreground">
-                    This can be anything you want as long as you remember it. We suggest using your School ID since it's easy to remember.
+                  This can be anything you want as long as you remember it. We suggest using your School ID since it's easy to remember.
                 </p>
               </div>
               <div className="space-y-2">
