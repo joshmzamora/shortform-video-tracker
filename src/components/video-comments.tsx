@@ -14,6 +14,8 @@ import { ScrollArea } from "@/components/ui/scroll-area"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 
+import { getComments } from "@/app/session/actions"
+
 interface Comment {
     id: string
     author: string
@@ -65,27 +67,6 @@ const generateMockComments = (videoId: string): Comment[] => {
             content: "Underrated content right here.",
             likes: 23,
             timestamp: "1 week ago"
-        },
-        {
-            id: "6",
-            author: "Jessica Taylor",
-            content: "Can you do a part 2 please?",
-            likes: 210,
-            timestamp: "1 week ago"
-        },
-        {
-            id: "7",
-            author: "Ryan Wilson",
-            content: "LMAO 😂😂😂",
-            likes: 890,
-            timestamp: "2 weeks ago"
-        },
-        {
-            id: "8",
-            author: "Kevin Miller",
-            content: "First!",
-            likes: 2,
-            timestamp: "3 weeks ago"
         }
     ]
 
@@ -97,62 +78,44 @@ const generateMockComments = (videoId: string): Comment[] => {
     });
 }
 
-async function fetchYoutubeComments(videoId: string, apiKey: string): Promise<Comment[]> {
-    const response = await fetch(
-        `https://www.googleapis.com/youtube/v3/commentThreads?part=snippet&videoId=${videoId}&maxResults=20&key=${apiKey}`
-    );
-
-    if (!response.ok) {
-        throw new Error("Failed to fetch comments");
-    }
-
-    const data = await response.json();
-    return data.items.map((item: any) => ({
-        id: item.id,
-        author: item.snippet.topLevelComment.snippet.authorDisplayName,
-        avatar: item.snippet.topLevelComment.snippet.authorProfileImageUrl,
-        content: item.snippet.topLevelComment.snippet.textDisplay,
-        likes: item.snippet.topLevelComment.snippet.likeCount,
-        timestamp: new Date(item.snippet.topLevelComment.snippet.publishedAt).toLocaleDateString(),
-    }));
-}
-
 export function VideoComments({ videoId, realVideoId }: VideoCommentsProps) {
     const [comments, setComments] = React.useState<Comment[]>([])
     const [loading, setLoading] = React.useState(false)
-    const [error, setError] = React.useState<string | null>(null)
     const [usingMock, setUsingMock] = React.useState(false)
 
     React.useEffect(() => {
         const loadComments = async () => {
             setLoading(true);
-            setError(null);
+            try {
+                const result = await getComments(videoId);
 
-            const apiKey = process.env.NEXT_PUBLIC_YOUTUBE_API_KEY;
-            const targetId = realVideoId || videoId;
-
-            if (apiKey && targetId) {
-                try {
-                    const realComments = await fetchYoutubeComments(targetId, apiKey);
-                    setComments(realComments);
+                if (result.success && result.comments && result.comments.length > 0) {
+                    const mappedComments = result.comments.map((c: any) => ({
+                        id: c.id,
+                        author: c.author,
+                        avatar: c.author_thumbnail,
+                        content: c.text,
+                        likes: c.like_count,
+                        timestamp: c._time_text || 'Recently'
+                    }));
+                    setComments(mappedComments);
                     setUsingMock(false);
-                } catch (err) {
-                    console.error("Failed to fetch real comments, falling back to mock:", err);
+                } else {
+                    // Fallback to mock if no local comments found
                     setComments(generateMockComments(videoId));
                     setUsingMock(true);
                 }
-            } else {
-                // No API key or ID, use mock
-                // setTimeout to simulate network
-                await new Promise(resolve => setTimeout(resolve, 300));
+            } catch (err) {
+                console.error("Failed to fetch comments", err);
                 setComments(generateMockComments(videoId));
                 setUsingMock(true);
+            } finally {
+                setLoading(false);
             }
-            setLoading(false);
         };
 
         loadComments();
-    }, [videoId, realVideoId]);
+    }, [videoId]);
 
     return (
         <Sheet>
@@ -180,7 +143,7 @@ export function VideoComments({ videoId, realVideoId }: VideoCommentsProps) {
                                     <AlertCircle className="h-4 w-4" />
                                     <AlertTitle>Simulated Comments</AlertTitle>
                                     <AlertDescription className="text-xs">
-                                        Showing simulated comments. Add a YouTube API Key to see live comments.
+                                        No local comments found. Showing simulated comments.
                                     </AlertDescription>
                                 </Alert>
                             )}

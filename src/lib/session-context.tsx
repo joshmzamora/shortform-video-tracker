@@ -6,8 +6,8 @@ import React, { createContext, useContext, useState, ReactNode } from 'react';
 interface ConsentData {
   participantId: string;
   participantName: string;
-  witnessName: string;
-  pocName: string;
+  witnessName?: string;
+  pocName?: string;
   parentalConsentAgreed: boolean;
   agreed: boolean;
   timestamp: string;

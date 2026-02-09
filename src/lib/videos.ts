@@ -4,6 +4,13 @@ export type Video = {
   caption: string;
   genre: string; // relaxed from literal union for flexibility
   src: string;
+  description?: string;
+  metadata?: {
+    viewCount?: number;
+    likeCount?: number;
+    uploadDate?: string;
+    originalUrl?: string;
+  };
 };
 
 // Helper to format filename into a caption

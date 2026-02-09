@@ -11,25 +11,74 @@ type SessionData = any;
 
 export async function getVideos(): Promise<{ success: boolean; videos: Video[]; message?: string }> {
   try {
-    const videosDir = path.join(process.cwd(), 'public', 'videos');
+    const educationDir = path.join(process.cwd(), 'public', 'videos', 'education');
+    let videos: Video[] = [];
 
-    if (!await fs.pathExists(videosDir)) {
-      console.warn("Videos directory not found:", videosDir);
-      return { success: false, videos: [], message: "Videos directory not found." };
+    if (await fs.pathExists(educationDir)) {
+      const entries = await fs.readdir(educationDir, { withFileTypes: true });
+
+      for (const entry of entries) {
+        if (entry.isDirectory()) {
+          const videoId = entry.name;
+          const dirPath = path.join(educationDir, videoId);
+
+          // Check for metadata.json
+          const metadataPath = path.join(dirPath, 'metadata.json');
+          let metadata: any = {};
+          if (await fs.pathExists(metadataPath)) {
+            try {
+              metadata = await fs.readJson(metadataPath);
+            } catch (e) {
+              console.error(`Failed to read metadata for ${videoId}`, e);
+            }
+          }
+
+          // Check for description.txt
+          const descPath = path.join(dirPath, 'description.txt');
+          let description = '';
+          if (await fs.pathExists(descPath)) {
+            description = await fs.readFile(descPath, 'utf-8');
+          }
+
+          // Check for video file
+          const videoPath = path.join(dirPath, 'video.mp4');
+          if (await fs.pathExists(videoPath)) {
+            videos.push({
+              id: videoId,
+              user: metadata.channel || '@Unknown',
+              caption: metadata.title || formatCaption(videoId),
+              genre: 'Education',
+              src: `/videos/education/${videoId}/video.mp4`,
+              description: description,
+              metadata: {
+                viewCount: metadata.viewCount,
+                likeCount: metadata.likeCount,
+                uploadDate: metadata.uploadDate,
+                originalUrl: metadata.originalUrl
+              }
+            });
+          }
+        }
+      }
     }
 
-    const files = await fs.readdir(videosDir);
-    const validExtensions = ['.mp4', '.mov', '.webm'];
+    // Fallback/Legacy: Check root videos folder
+    const videosDir = path.join(process.cwd(), 'public', 'videos');
+    if (await fs.pathExists(videosDir)) {
+      const files = await fs.readdir(videosDir);
+      const validExtensions = ['.mp4', '.mov', '.webm'];
+      const legacyVideos = files
+        .filter(file => validExtensions.includes(path.extname(file).toLowerCase()))
+        .map(file => ({
+          id: file,
+          user: '@LocalVideo',
+          caption: formatCaption(file),
+          genre: 'General',
+          src: `/videos/${encodeURIComponent(file)}`
+        }));
 
-    const videos: Video[] = files
-      .filter(file => validExtensions.includes(path.extname(file).toLowerCase()))
-      .map(file => ({
-        id: file,
-        user: '@LocalVideo',
-        caption: formatCaption(file),
-        genre: 'General',
-        src: `/videos/${encodeURIComponent(file)}`
-      }));
+      videos = [...videos, ...legacyVideos];
+    }
 
     if (videos.length === 0) {
       return { success: false, videos: [], message: "No videos found in the directory." };
@@ -43,6 +92,21 @@ export async function getVideos(): Promise<{ success: boolean; videos: Video[]; 
   }
 }
 
+export async function getComments(videoId: string): Promise<{ success: boolean; comments: any[]; message?: string }> {
+  try {
+    const commentsPath = path.join(process.cwd(), 'public', 'videos', 'education', videoId, 'comments.json');
+    if (await fs.pathExists(commentsPath)) {
+      const comments = await fs.readJson(commentsPath);
+      // Limit to 50 for performance
+      return { success: true, comments: comments.slice(0, 50) };
+    }
+    return { success: false, comments: [], message: "No comments found." };
+  } catch (error) {
+    console.error("Failed to load comments:", error);
+    return { success: false, comments: [], message: "Failed to load comments." };
+  }
+}
+
 export async function saveSessionData(data: SessionData[]) {
   // Bulk save (Legacy/Backup)
   // Saves an array of events as a single record (Session)
@@ -51,20 +115,6 @@ export async function saveSessionData(data: SessionData[]) {
   }
 
   try {
-    // For bulk save, we might want to iterate or save as one big document.
-    // Given the new schema (interactions), we should probably save them individually?
-    // But this function is usually called at the END.
-    // If we already streamed them, this might be duplicate?
-    // The SessionPage calls this as a backup.
-    // Let's save it as a "Completed Session" summary or just ignore if streaming works?
-    // For safety, let's save it.
-
-    // We can save the whole array as one document in 'sessions' collection for easy backup.
-    // Wait, 'sessions' collection was for interactions?
-    // Let's use the same collection but maybe a different structure?
-    // Actually, let's just loop and save them if they aren't saved?
-    // No, that's complex.
-
     // Simplest: Save the entire session array as a single document with a 'type': 'full_session_backup'
     const backupData = {
       participantId: data[0]?.participantId,

@@ -127,6 +127,13 @@ export function VideoPlayer({ video, isActive, onInteraction, getWatchTime }: Vi
   const onPlay = () => setIsPlaying(true);
   const onPause = () => setIsPlaying(false);
 
+  const formatCount = (count?: number) => {
+    if (count === undefined) return "Like";
+    if (count >= 1000000) return (count / 1000000).toFixed(1) + 'M';
+    if (count >= 1000) return (count / 1000).toFixed(1) + 'K';
+    return count.toString();
+  };
+
   return (
     <div className="relative h-full w-full bg-black flex justify-center items-center overflow-hidden">
       {/* Blurred Background for Desktop (Optional, enhances "fill" feel) */}
@@ -194,7 +201,9 @@ export function VideoPlayer({ video, isActive, onInteraction, getWatchTime }: Vi
               className={cn("flex h-12 w-12 items-center justify-center rounded-full bg-white/10 backdrop-blur-md text-white transition-all duration-200 hover:scale-110 active:scale-95 hover:bg-white/20", { "bg-rose-500/80 hover:bg-rose-600 text-white": isLiked })}>
               <Heart className={cn("h-6 w-6 transition-all", { "fill-current": isLiked })} />
             </button>
-            <span className="text-xs font-semibold drop-shadow-md">Like</span>
+            <span className="text-xs font-semibold drop-shadow-md">
+              {formatCount(video.metadata?.likeCount)}
+            </span>
           </div>
 
           <div className="flex flex-col items-center gap-1">
