@@ -6,7 +6,7 @@ const PROJECT_ID = process.env.NEXT_PUBLIC_APPWRITE_PROJECT_ID;
 const API_KEY = process.env.APPWRITE_API_KEY;
 
 // Schema Constants
-const DB_ID = 'tracker_db';
+const DB_ID = '6982036800063f44fa1d';
 const TABLE_CONSENTS = 'consents';
 const TABLE_QUESTIONNAIRES = 'questionnaires';
 const TABLE_SESSIONS = 'sessions';
@@ -99,7 +99,7 @@ class AppwriteService {
             if (e.code === 404) {
                 console.log(`[Appwrite] Creating Table: ${tableId}`);
                 await this.databases.createCollection(DB_ID, tableId, tableId);
-                
+
                 // Create Attributes
                 for (const attr of attributes) {
                     try {
@@ -132,7 +132,7 @@ class AppwriteService {
         try {
             // Sanitize data: remove undefined fields, stringify JSON fields if needed
             const documentData = { ...data };
-            
+
             // Handle JSON fields
             if (tableId === TABLE_QUESTIONNAIRES && typeof documentData.answers === 'object') {
                 documentData.answers = JSON.stringify(documentData.answers);
@@ -146,7 +146,7 @@ class AppwriteService {
             // We should only pass fields that are in the schema.
             // But we can't easily validate against schema here without fetching it.
             // We rely on the caller passing correct data.
-            
+
             // Also, remove keys that might be problematic (like internal ones, though 'id' is used for ID)
             const docId = documentData.id ? documentData.id : ID.unique();
             if (documentData.id) delete documentData.id; // Remove ID from body if it's there
@@ -180,16 +180,16 @@ class AppwriteService {
                 tableId,
                 [Query.limit(1000), Query.orderDesc('$createdAt')]
             );
-            
+
             // Map back to usable data
             const dbData = response.documents.map(doc => {
                 const data = { ...doc };
                 // Parse JSON fields
                 if (tableId === TABLE_QUESTIONNAIRES && data.answers) {
-                    try { data.answers = JSON.parse(data.answers); } catch {}
+                    try { data.answers = JSON.parse(data.answers); } catch { }
                 }
                 if (tableId === TABLE_SESSIONS && data.events) {
-                    try { data.events = JSON.parse(data.events); } catch {}
+                    try { data.events = JSON.parse(data.events); } catch { }
                 }
                 return data;
             });
