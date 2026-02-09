@@ -6,10 +6,11 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
+import { Slider } from '@/components/ui/slider';
 import { useToast } from '@/hooks/use-toast';
 import { saveQuestionnaireData } from './actions';
 import { useSession } from '@/lib/session-context';
-import { Loader2, PartyPopper } from 'lucide-react';
+import { Loader2, PartyPopper, Upload, Smartphone } from 'lucide-react';
 import { Separator } from '@/components/ui/separator';
 import { Checkbox } from '@/components/ui/checkbox';
 import { useSearchParams, useRouter } from 'next/navigation';
@@ -57,6 +58,14 @@ function QuestionnaireContent() {
 
   const [participantId, setParticipantId] = useState('');
   const [answers, setAnswers] = useState<{ [key: string]: string }>({});
+  const [screenTime, setScreenTime] = useState({
+    tiktok: '',
+    instagram: '',
+    youtube: '',
+    snapchat: ''
+  });
+  const [shortFormPercentage, setShortFormPercentage] = useState([50]);
+  const [screenshot, setScreenshot] = useState<string | null>(null);
   const [submissionState, setSubmissionState] = useState<'idle' | 'submitting' | 'submitted'>('idle');
 
   useEffect(() => {
@@ -75,15 +84,31 @@ function QuestionnaireContent() {
     setAnswers(prev => ({ ...prev, [questionId]: value }));
   };
 
+  const handleScreenTimeChange = (app: keyof typeof screenTime, value: string) => {
+    setScreenTime(prev => ({ ...prev, [app]: value }));
+  };
+
+  const handleScreenshotUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setScreenshot(reader.result as string);
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
   const allQuestionsAnswered = Object.keys(answers).length === questions.length;
-  const canSubmit = participantId.trim() !== '' && allQuestionsAnswered;
+  const screenTimeFilled = Object.values(screenTime).every(val => val.trim() !== '');
+  const canSubmit = participantId.trim() !== '' && allQuestionsAnswered && screenTimeFilled;
 
   const handleSubmit = async () => {
     if (!canSubmit) {
       toast({
         variant: "destructive",
         title: "Incomplete Form",
-        description: "Please enter your Participant ID and answer all questions before submitting.",
+        description: "Please enter your Participant ID, answer all questions, and provide screen time data.",
       });
       return;
     }
@@ -93,6 +118,9 @@ function QuestionnaireContent() {
     const dataToSave = {
       participantId: participantId.trim(),
       answers,
+      screenTime,
+      shortFormPercentage: shortFormPercentage[0],
+      screenTimeScreenshot: screenshot || undefined,
       timestamp: new Date().toISOString(),
     };
 
@@ -201,6 +229,91 @@ function QuestionnaireContent() {
                 </RadioGroup>
               </div>
             ))}
+          </div>
+
+          <Separator />
+
+          <div className="space-y-6">
+            <div className="flex items-center gap-2">
+              <Smartphone className="h-5 w-5" />
+              <h3 className="text-lg font-bold">Screen Time Report</h3>
+            </div>
+
+            <div className="bg-muted/50 p-4 rounded-lg text-sm text-muted-foreground">
+              Please open your device settings and navigate to <strong>Screen Time</strong> (iOS) or <strong>Digital Wellbeing</strong> (Android).
+              View your data for the <strong>last full week</strong>.
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div className="space-y-2">
+                <Label htmlFor="tiktok-time">TikTok Time (e.g. 5h 30m)</Label>
+                <Input
+                  id="tiktok-time"
+                  placeholder="0h 0m"
+                  value={screenTime.tiktok}
+                  onChange={(e) => handleScreenTimeChange('tiktok', e.target.value)}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="instagram-time">Instagram Time</Label>
+                <Input
+                  id="instagram-time"
+                  placeholder="0h 0m"
+                  value={screenTime.instagram}
+                  onChange={(e) => handleScreenTimeChange('instagram', e.target.value)}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="youtube-time">YouTube Time</Label>
+                <Input
+                  id="youtube-time"
+                  placeholder="0h 0m"
+                  value={screenTime.youtube}
+                  onChange={(e) => handleScreenTimeChange('youtube', e.target.value)}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="snapchat-time">Snapchat Time</Label>
+                <Input
+                  id="snapchat-time"
+                  placeholder="0h 0m"
+                  value={screenTime.snapchat}
+                  onChange={(e) => handleScreenTimeChange('snapchat', e.target.value)}
+                />
+              </div>
+            </div>
+
+            <div className="space-y-4 pt-4">
+              <Label>What percentage of your time on these apps is spent watching short-form videos (Reels, TikToks, Shorts)?</Label>
+              <div className="flex items-center gap-4">
+                <span className="font-bold w-12">{shortFormPercentage[0]}%</span>
+                <Slider
+                  value={shortFormPercentage}
+                  onValueChange={setShortFormPercentage}
+                  max={100}
+                  step={5}
+                  className="flex-1"
+                />
+              </div>
+              <p className="text-xs text-muted-foreground">Estimate to the best of your ability.</p>
+            </div>
+
+            <div className="space-y-2 pt-4">
+              <Label>Upload Screen Time Screenshot (Optional)</Label>
+              <div className="flex items-center gap-4">
+                <Input
+                  type="file"
+                  accept="image/*"
+                  onChange={handleScreenshotUpload}
+                  className="cursor-pointer"
+                />
+              </div>
+              {screenshot && (
+                <p className="text-xs text-green-600 font-medium flex items-center gap-1">
+                  <Upload className="h-3 w-3" /> Image attached successfully
+                </p>
+              )}
+            </div>
           </div>
         </CardContent>
         <CardFooter>

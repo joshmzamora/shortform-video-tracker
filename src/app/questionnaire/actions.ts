@@ -5,6 +5,14 @@ import { appwriteService, Tables } from '@/lib/appwrite';
 export type QuestionnaireData = {
   participantId: string;
   answers: { [key: string]: string };
+  screenTime: {
+    tiktok: string;
+    instagram: string;
+    youtube: string;
+    snapchat: string;
+  };
+  shortFormPercentage: number;
+  screenTimeScreenshot?: string; // Base64 string
   timestamp: string;
 };
 
