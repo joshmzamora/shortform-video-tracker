@@ -7,17 +7,17 @@ const API_KEY = process.env.APPWRITE_API_KEY;
 
 // Schema Constants
 const DB_ID = 'tracker_db';
-const COLL_CONSENTS = 'consents';
-const COLL_QUESTIONNAIRES = 'questionnaires';
-const COLL_SESSIONS = 'sessions';
+const TABLE_CONSENTS = 'consents';
+const TABLE_QUESTIONNAIRES = 'questionnaires';
+const TABLE_SESSIONS = 'sessions';
 
 // Fallback Memory Store (if Appwrite is not configured)
 const globalStore = global as any;
 if (!globalStore.__appwriteFallback) {
     globalStore.__appwriteFallback = {
-        [COLL_CONSENTS]: [],
-        [COLL_QUESTIONNAIRES]: [],
-        [COLL_SESSIONS]: []
+        [TABLE_CONSENTS]: [],
+        [TABLE_QUESTIONNAIRES]: [],
+        [TABLE_SESSIONS]: []
     };
 }
 const memoryStore = globalStore.__appwriteFallback;
@@ -41,7 +41,7 @@ class AppwriteService {
         }
     }
 
-    // Initialize Database and Collections if they don't exist
+    // Initialize Database and Tables if they don't exist
     private async initSchema() {
         if (!this.databases || !this.isReady) return;
 
@@ -56,79 +56,119 @@ class AppwriteService {
                 }
             }
 
-            // Check/Create Collections
-            await this.ensureCollection(COLL_CONSENTS);
-            await this.ensureCollection(COLL_QUESTIONNAIRES);
-            await this.ensureCollection(COLL_SESSIONS);
+            // Check/Create Tables (Collections)
+            await this.ensureTable(TABLE_CONSENTS, [
+                { key: 'participantId', type: 'string', size: 255, required: true },
+                { key: 'participantName', type: 'string', size: 255, required: true },
+                { key: 'agreed', type: 'boolean', required: true },
+                { key: 'parentalConsentAgreed', type: 'boolean', required: true },
+                { key: 'timestamp', type: 'string', size: 64, required: true }
+            ]);
+
+            await this.ensureTable(TABLE_QUESTIONNAIRES, [
+                { key: 'participantId', type: 'string', size: 255, required: true },
+                { key: 'answers', type: 'string', size: 10000, required: true }, // JSON string
+                { key: 'timestamp', type: 'string', size: 64, required: true }
+            ]);
+
+            await this.ensureTable(TABLE_SESSIONS, [
+                { key: 'participantId', type: 'string', size: 255, required: true },
+                { key: 'type', type: 'string', size: 64, required: false },
+                { key: 'videoId', type: 'string', size: 255, required: false },
+                { key: 'interactionType', type: 'string', size: 64, required: false },
+                { key: 'watchTimeMs', type: 'integer', required: false },
+                { key: 'genre', type: 'string', size: 64, required: false },
+                { key: 'timestamp', type: 'string', size: 64, required: true },
+                { key: 'events', type: 'string', size: 1000000, required: false } // Large JSON for backups
+            ]);
 
         } catch (error) {
             console.error("[Appwrite] Schema initialization failed:", error);
         }
     }
 
-    private async ensureCollection(collId: string) {
+    private async ensureTable(tableId: string, attributes: any[]) {
         if (!this.databases) return;
         try {
-            await this.databases.getCollection(DB_ID, collId);
+            await this.databases.getCollection(DB_ID, tableId);
+            // Collection exists, we should assume attributes exist or check them?
+            // For now, we assume if collection exists, it's fine.
+            // But we could list attributes and add missing ones.
+            // Let's keep it simple: Create if missing.
         } catch (e: any) {
             if (e.code === 404) {
-                console.log(`[Appwrite] Creating Collection: ${collId}`);
-                await this.databases.createCollection(DB_ID, collId, collId);
-                // We could create attributes here if needed, but Appwrite allows schemaless-ish (if permissions allow?)
-                // Actually, Appwrite Databases require attributes for structured data, but we can store JSON in a string attribute or define attributes.
-                // For simplicity/robustness, we'll try to store the main data as a big string 'data' attribute, 
-                // OR we define specific attributes.
-                // Let's define a 'payload' string attribute (large) to store the JSON, 
-                // and some top-level attributes for querying (participantId, timestamp).
-
-                await this.databases.createStringAttribute(DB_ID, collId, 'participantId', 255, true);
-                await this.databases.createStringAttribute(DB_ID, collId, 'payload', 100000, true); // 100kb limit? text attribute can be bigger? 
-                // MediumText is 16MB. 'payload' as string size 1,000,000?
-                // Appwrite string max is 1,073,741,824 in some versions, but standard string is 255?
-                // Wait, createStringAttribute size max is 1073741824.
-                // Let's safe bet on 1000000.
+                console.log(`[Appwrite] Creating Table: ${tableId}`);
+                await this.databases.createCollection(DB_ID, tableId, tableId);
                 
-                // Add timestamp
-                // await this.databases.createDatetimeAttribute(DB_ID, collId, 'timestamp', false); 
-                // Actually $createdAt exists.
+                // Create Attributes
+                for (const attr of attributes) {
+                    try {
+                        if (attr.type === 'string') {
+                            await this.databases.createStringAttribute(DB_ID, tableId, attr.key, attr.size || 255, attr.required);
+                        } else if (attr.type === 'boolean') {
+                            await this.databases.createBooleanAttribute(DB_ID, tableId, attr.key, attr.required);
+                        } else if (attr.type === 'integer') {
+                            await this.databases.createIntegerAttribute(DB_ID, tableId, attr.key, attr.required);
+                        }
+                        // Add delays to avoid rate limits or race conditions?
+                        // Appwrite handles this queue usually, but slight delay helps.
+                        await new Promise(r => setTimeout(r, 200));
+                    } catch (err) {
+                        console.error(`[Appwrite] Failed to create attribute ${attr.key} on ${tableId}:`, err);
+                    }
+                }
             }
         }
     }
 
     // Generic Save
-    async saveDocument(collectionId: string, data: any) {
+    async saveDocument(tableId: string, data: any) {
         if (!this.isReady || !this.databases) {
             // Fallback
-            memoryStore[collectionId].push(data);
+            memoryStore[tableId].push(data);
             return true;
         }
 
         try {
-            // We store the raw data in 'payload' and extract key fields
-            const payload = JSON.stringify(data);
-            const participantId = data.participantId || data.id || 'unknown';
+            // Sanitize data: remove undefined fields, stringify JSON fields if needed
+            const documentData = { ...data };
+            
+            // Handle JSON fields
+            if (tableId === TABLE_QUESTIONNAIRES && typeof documentData.answers === 'object') {
+                documentData.answers = JSON.stringify(documentData.answers);
+            }
+            if (tableId === TABLE_SESSIONS && typeof documentData.events === 'object') {
+                documentData.events = JSON.stringify(documentData.events);
+            }
+
+            // Remove undefined or null fields if they are optional and not provided?
+            // Appwrite createDocument ignores fields not in schema? No, it errors.
+            // We should only pass fields that are in the schema.
+            // But we can't easily validate against schema here without fetching it.
+            // We rely on the caller passing correct data.
+            
+            // Also, remove keys that might be problematic (like internal ones, though 'id' is used for ID)
+            const docId = documentData.id ? documentData.id : ID.unique();
+            if (documentData.id) delete documentData.id; // Remove ID from body if it's there
 
             await this.databases.createDocument(
                 DB_ID,
-                collectionId,
-                ID.unique(),
-                {
-                    participantId,
-                    payload
-                }
+                tableId,
+                docId,
+                documentData
             );
             return true;
         } catch (error) {
-            console.error(`[Appwrite] Failed to save to ${collectionId}:`, error);
+            console.error(`[Appwrite] Failed to save to ${tableId}:`, error);
             // Fallback on failure
-            memoryStore[collectionId].push(data);
+            memoryStore[tableId].push(data);
             return false;
         }
     }
 
     // Generic List
-    async listDocuments(collectionId: string) {
-        let memoryData = memoryStore[collectionId] || [];
+    async listDocuments(tableId: string) {
+        let memoryData = memoryStore[tableId] || [];
 
         if (!this.isReady || !this.databases) {
             return memoryData;
@@ -137,27 +177,27 @@ class AppwriteService {
         try {
             const response = await this.databases.listDocuments(
                 DB_ID,
-                collectionId,
+                tableId,
                 [Query.limit(1000), Query.orderDesc('$createdAt')]
             );
             
-            // Map back to original data structure
+            // Map back to usable data
             const dbData = response.documents.map(doc => {
-                try {
-                    const parsed = JSON.parse(doc.payload);
-                    // Inject metadata if needed
-                    return { ...parsed, $createdAt: doc.$createdAt, $id: doc.$id };
-                } catch (e) {
-                    return null;
+                const data = { ...doc };
+                // Parse JSON fields
+                if (tableId === TABLE_QUESTIONNAIRES && data.answers) {
+                    try { data.answers = JSON.parse(data.answers); } catch {}
                 }
-            }).filter(Boolean);
+                if (tableId === TABLE_SESSIONS && data.events) {
+                    try { data.events = JSON.parse(data.events); } catch {}
+                }
+                return data;
+            });
 
-            // Merge with memory data (in case some failed to save to DB but are in memory)
-            // Ideally we'd deduplicate, but simple concatenation is safer than missing data.
             return [...memoryData, ...dbData];
 
         } catch (error) {
-            console.error(`[Appwrite] Failed to list ${collectionId}:`, error);
+            console.error(`[Appwrite] Failed to list ${tableId}:`, error);
             return memoryData;
         }
     }
@@ -165,8 +205,8 @@ class AppwriteService {
 
 export const appwriteService = new AppwriteService();
 
-export const Collections = {
-    Consents: COLL_CONSENTS,
-    Questionnaires: COLL_QUESTIONNAIRES,
-    Sessions: COLL_SESSIONS
+export const Tables = {
+    Consents: TABLE_CONSENTS,
+    Questionnaires: TABLE_QUESTIONNAIRES,
+    Sessions: TABLE_SESSIONS
 };

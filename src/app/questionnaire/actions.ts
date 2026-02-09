@@ -1,6 +1,6 @@
 "use server";
 
-import { appwriteService, Collections } from '@/lib/appwrite';
+import { appwriteService, Tables } from '@/lib/appwrite';
 
 export type QuestionnaireData = {
   participantId: string;
@@ -14,7 +14,7 @@ export async function saveQuestionnaireData(data: QuestionnaireData) {
   }
 
   try {
-    const success = await appwriteService.saveDocument(Collections.Questionnaires, data);
+    const success = await appwriteService.saveDocument(Tables.Questionnaires, data);
     if (!success) throw new Error("Appwrite save failed (using fallback)");
 
     return { success: true, message: "Questionnaire data saved successfully." };

@@ -1,6 +1,6 @@
 "use server";
 
-import { appwriteService, Collections } from '@/lib/appwrite';
+import { appwriteService, Tables } from '@/lib/appwrite';
 import fs from 'fs-extra';
 import path from 'path';
 import { Video, formatCaption } from '@/lib/videos';
@@ -73,7 +73,7 @@ export async function saveSessionData(data: SessionData[]) {
       events: data
     };
 
-    const success = await appwriteService.saveDocument(Collections.Sessions, backupData);
+    const success = await appwriteService.saveDocument(Tables.Sessions, backupData);
     if (!success) throw new Error("Appwrite save failed");
 
     return { success: true, message: "Data saved successfully." };
@@ -91,7 +91,7 @@ export async function saveInteraction(data: SessionData) {
   }
 
   try {
-    const success = await appwriteService.saveDocument(Collections.Sessions, data);
+    const success = await appwriteService.saveDocument(Tables.Sessions, data);
     if (!success) throw new Error("Appwrite save failed");
 
     return { success: true, message: "Interaction saved." };

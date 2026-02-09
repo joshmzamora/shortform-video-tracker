@@ -1,13 +1,13 @@
 'use server';
 
-import { appwriteService, Collections } from '@/lib/appwrite';
+import { appwriteService, Tables } from '@/lib/appwrite';
 import { Query } from 'node-appwrite';
 
 export async function getAdminData() {
   // Fetch all data from Appwrite (or Memory Fallback)
-  const consents = await appwriteService.listDocuments(Collections.Consents);
-  const questionnaires = await appwriteService.listDocuments(Collections.Questionnaires);
-  const rawSessions = await appwriteService.listDocuments(Collections.Sessions);
+  const consents = await appwriteService.listDocuments(Tables.Consents);
+  const questionnaires = await appwriteService.listDocuments(Tables.Questionnaires);
+  const rawSessions = await appwriteService.listDocuments(Tables.Sessions);
 
   // Normalize Sessions Data
   // rawSessions could be:
@@ -43,7 +43,7 @@ export async function getAdminData() {
   // If we have a 'full_session_backup' for a participant, should we ignore their streamed events?
   // Yes, because the backup is the final state.
   // Let's filter out streamed sessions if a backup exists for that participant.
-  
+
   const backupParticipantIds = new Set(completedBackups.map(s => s[0]?.participantId));
   const uniqueStreamedSessions = streamedSessions.filter(s => !backupParticipantIds.has(s[0]?.participantId));
 
@@ -69,29 +69,29 @@ export async function getAdminData() {
 }
 
 export async function clearAdminData() {
-    // We don't implement delete for now to prevent accidental data loss.
-    return { success: true };
+  // We don't implement delete for now to prevent accidental data loss.
+  return { success: true };
 }
 
 export async function getConsent(participantId: string) {
-    if (!participantId) return { success: false, message: "No ID provided" };
+  if (!participantId) return { success: false, message: "No ID provided" };
 
-    // Ideally we filter by participantId. 
-    // Since our appwrite service abstraction currently only has 'listDocuments' which returns everything (limit 1000),
-    // we can re-use it and filter in memory for now. 
-    // Optimization: Add a query param to appwriteService.listDocuments or add a specific get method.
-    // Given the scale (20 participants), fetching all is fine.
-    
-    try {
-        const consents = await appwriteService.listDocuments(Collections.Consents);
-        const consent = consents.find((c: any) => c.participantId === participantId);
-        
-        if (consent) {
-            return { success: true, data: consent };
-        }
-        return { success: false, message: "Consent not found" };
-    } catch (e) {
-        console.error("Failed to fetch consent:", e);
-        return { success: false, message: "Server error" };
+  // Ideally we filter by participantId. 
+  // Since our appwrite service abstraction currently only has 'listDocuments' which returns everything (limit 1000),
+  // we can re-use it and filter in memory for now. 
+  // Optimization: Add a query param to appwriteService.listDocuments or add a specific get method.
+  // Given the scale (20 participants), fetching all is fine.
+
+  try {
+    const consents = await appwriteService.listDocuments(Tables.Consents);
+    const consent = consents.find((c: any) => c.participantId === participantId);
+
+    if (consent) {
+      return { success: true, data: consent };
     }
+    return { success: false, message: "Consent not found" };
+  } catch (e) {
+    console.error("Failed to fetch consent:", e);
+    return { success: false, message: "Server error" };
+  }
 }
