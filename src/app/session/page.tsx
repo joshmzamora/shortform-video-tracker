@@ -8,6 +8,7 @@ import {
   CarouselItem,
   type CarouselApi,
 } from "@/components/ui/carousel";
+import { TikTokPlayer } from '@/components/tiktok-player';
 import { VideoPlayer, type VideoInteraction } from '@/components/video-player';
 import { SessionTimer } from '@/components/session-timer';
 import { type Video } from '@/lib/videos';
@@ -88,11 +89,12 @@ function SessionPage() {
     initSession();
   }, [participantId, router, toast]);
 
-  const handleInteraction = useCallback((interaction: VideoInteraction) => {
+  const handleInteraction = useCallback((interaction: Omit<VideoInteraction, 'interactionType'> & { interactionType?: VideoInteraction['interactionType'] }) => {
     const video = videoList.find(v => v.id === interaction.videoId);
     if (!video || !participantId) return;
 
     const newRecord: SessionData = {
+      interactionType: 'view', // Default to 'view' for TikTok interactions
       ...interaction,
       participantId,
       genre: video.genre,
@@ -110,15 +112,10 @@ function SessionPage() {
 
   }, [participantId, videoList, addSessionEvent]);
 
-  const getWatchTime = useCallback(() => {
-    if (watchTimeStartRef.current === 0) return 0;
-    return Date.now() - watchTimeStartRef.current;
-  }, []);
-
   const handleSessionComplete = useCallback(async () => {
     setSessionState('exporting');
 
-    const finalWatchTime = getWatchTime();
+    const finalWatchTime = watchTimeStartRef.current > 0 ? Date.now() - watchTimeStartRef.current : 0;
     if (videoList.length === 0) return; // Guard clause
 
     const finalViewRecord: SessionData = {
@@ -180,7 +177,7 @@ function SessionPage() {
       const newIndex = carouselApi.selectedScrollSnap();
       const previousIndex = currentVideoIndex;
 
-      const watchTimeMs = getWatchTime();
+      const watchTimeMs = watchTimeStartRef.current > 0 ? Date.now() - watchTimeStartRef.current : 0;
       const interactionType = watchTimeMs < SKIP_THRESHOLD_MS ? 'skip' : 'view';
 
       handleInteraction({
@@ -223,12 +220,20 @@ function SessionPage() {
           <CarouselContent className="-mt-0 h-full">
             {videoList.map((video, index) => (
               <CarouselItem key={video.id} className="pt-0 h-full w-full">
-                <VideoPlayer
-                  video={video}
-                  isActive={index === currentVideoIndex}
-                  onInteraction={handleInteraction}
-                  getWatchTime={getWatchTime}
-                />
+                {video.src.includes('tiktok') ? (
+                  <TikTokPlayer
+                    video={video}
+                    isActive={index === currentVideoIndex}
+                    onInteraction={handleInteraction}
+                  />
+                ) : (
+                  <VideoPlayer
+                    video={video}
+                    isActive={index === currentVideoIndex}
+                    onInteraction={handleInteraction}
+                    getWatchTime={() => watchTimeStartRef.current > 0 ? Date.now() - watchTimeStartRef.current : 0}
+                  />
+                )}
               </CarouselItem>
             ))}
           </CarouselContent>
