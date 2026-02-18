@@ -13,6 +13,7 @@ type TikTokPlayerProps = {
 
 export function TikTokPlayer({ video, isActive, onInteraction }: TikTokPlayerProps) {
   const [embedHtml, setEmbedHtml] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
   const ref = useRef<HTMLDivElement>(null);
   const intersectionObserver = useRef<IntersectionObserver | null>(null);
   const visibilityTimer = useRef<NodeJS.Timeout | null>(null);
@@ -23,9 +24,15 @@ export function TikTokPlayer({ video, isActive, onInteraction }: TikTokPlayerPro
       try {
         const response = await fetch(`https://www.tiktok.com/oembed?url=${video.src}`);
         const data = await response.json();
-        setEmbedHtml(data.html);
+        if (response.ok) {
+          const cleanedHtml = data.html.replace(/style=".*?"/, '');
+          setEmbedHtml(cleanedHtml);
+        } else {
+          setError(data.message || 'Failed to load TikTok video.');
+        }
       } catch (error) {
         console.error("Failed to fetch TikTok oEmbed:", error);
+        setError('Failed to load TikTok video.');
       }
     };
 
@@ -36,13 +43,13 @@ export function TikTokPlayer({ video, isActive, onInteraction }: TikTokPlayerPro
 
   useEffect(() => {
     if (embedHtml) {
-      const script = document.createElement('script');
-      script.src = 'https://www.tiktok.com/embed.js';
-      script.async = true;
-      document.body.appendChild(script);
-      return () => {
-        document.body.removeChild(script);
-      };
+      // Ensure the script is loaded only once
+      if (!document.querySelector('script[src="https://www.tiktok.com/embed.js"]')) {
+        const script = document.createElement('script');
+        script.src = 'https://www.tiktok.com/embed.js';
+        script.async = true;
+        document.body.appendChild(script);
+      }
     }
   }, [embedHtml]);
 
@@ -85,12 +92,14 @@ export function TikTokPlayer({ video, isActive, onInteraction }: TikTokPlayerPro
   return (
     <div
       ref={ref}
-      className="h-full w-full flex justify-center items-center bg-black"
+      className="h-full w-full flex justify-center items-center bg-white"
     >
-      {embedHtml ? (
-        <div dangerouslySetInnerHTML={{ __html: embedHtml }} />
+      {error ? (
+        <div className="text-red-500">{error}</div>
+      ) : embedHtml ? (
+        <div className="tiktok-embed" dangerouslySetInnerHTML={{ __html: embedHtml }} />
       ) : (
-        <div className="text-white">Loading TikTok...</div>
+        <div className="text-black">Loading TikTok...</div>
       )}
     </div>
   );

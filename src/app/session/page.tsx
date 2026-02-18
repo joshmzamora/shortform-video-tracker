@@ -204,7 +204,7 @@ function SessionPage() {
 
   if (sessionState === 'running') {
     return (
-      <div className="relative h-[100dvh] w-screen bg-black overflow-hidden">
+      <div className="relative h-[100dvh] w-screen bg-white overflow-hidden">
         <Carousel
           setApi={setApi}
           opts={{ 
