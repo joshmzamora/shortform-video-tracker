@@ -57,7 +57,13 @@ function QuestionnaireContent() {
   const { participantId: contextParticipantId, setQuestionnaire } = useSession();
 
   const [participantId, setParticipantId] = useState('');
-  const [answers, setAnswers] = useState<{ [key: string]: string }>({});
+  const [answers, setAnswers] = useState(() => {
+    const initialAnswers: { [key: string]: string } = {};
+    questions.forEach(q => {
+      initialAnswers[q.id] = '';
+    });
+    return initialAnswers;
+  });
   const [screenTime, setScreenTime] = useState({
     tiktok: '',
     instagram: '',

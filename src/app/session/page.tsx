@@ -168,7 +168,7 @@ function SessionPage() {
       setSessionState('completed');
     }, 500);
 
-  }, [currentVideoIndex, getWatchTime, participantId, toast, videoList, addSessionEvent, clearSession]);
+  }, [currentVideoIndex, participantId, toast, videoList, addSessionEvent, clearSession]);
 
   useEffect(() => {
     if (!api || videoList.length === 0) return;
@@ -192,7 +192,7 @@ function SessionPage() {
 
     api.on("select", onSelect);
     return () => { api.off("select", onSelect) };
-  }, [api, currentVideoIndex, getWatchTime, handleInteraction, videoList]);
+  }, [api, currentVideoIndex, handleInteraction, videoList]);
 
   if (sessionState === 'initializing') {
     return (
