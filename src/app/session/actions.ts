@@ -11,73 +11,32 @@ type SessionData = any;
 
 export async function getVideos(): Promise<{ success: boolean; videos: Video[]; message?: string }> {
   try {
-    const educationDir = path.join(process.cwd(), 'public', 'videos', 'education');
+    const videosDir = path.join(process.cwd(), 'public', 'videos');
+    const genres = ['doomscroll', 'educational', 'entertainment', 'inspirational', 'relatable'];
     let videos: Video[] = [];
 
-    if (await fs.pathExists(educationDir)) {
-      const entries = await fs.readdir(educationDir, { withFileTypes: true });
-
-      for (const entry of entries) {
-        if (entry.isDirectory()) {
-          const videoId = entry.name;
-          const dirPath = path.join(educationDir, videoId);
-
-          // Check for metadata.json
-          const metadataPath = path.join(dirPath, 'metadata.json');
-          let metadata: any = {};
-          if (await fs.pathExists(metadataPath)) {
-            try {
-              metadata = await fs.readJson(metadataPath);
-            } catch (e) {
-              console.error(`Failed to read metadata for ${videoId}`, e);
+    for (const genre of genres) {
+      const genreDir = path.join(videosDir, genre);
+      if (await fs.pathExists(genreDir)) {
+        const files = await fs.readdir(genreDir);
+        for (const file of files) {
+          if (path.extname(file).toLowerCase() === '.txt') {
+            const filePath = path.join(genreDir, file);
+            const content = await fs.readFile(filePath, 'utf-8');
+            const match = content.match(/cite="(https:\/\/www\.tiktok\.com\/[^\"]+)"/);
+            if (match && match[1]) {
+              const videoId = path.basename(file, '.txt');
+              videos.push({
+                id: `${genre}_${videoId}`,
+                user: '@Unknown',
+                caption: formatCaption(videoId),
+                genre: genre.charAt(0).toUpperCase() + genre.slice(1),
+                src: match[1],
+              });
             }
-          }
-
-          // Check for description.txt
-          const descPath = path.join(dirPath, 'description.txt');
-          let description = '';
-          if (await fs.pathExists(descPath)) {
-            description = await fs.readFile(descPath, 'utf-8');
-          }
-
-          // Check for video file
-          const videoPath = path.join(dirPath, 'video.mp4');
-          if (await fs.pathExists(videoPath)) {
-            videos.push({
-              id: videoId,
-              user: metadata.channel || '@Unknown',
-              caption: metadata.title || formatCaption(videoId),
-              genre: 'Education',
-              src: `/videos/education/${videoId}/video.mp4`,
-              description: description,
-              metadata: {
-                viewCount: metadata.viewCount,
-                likeCount: metadata.likeCount,
-                uploadDate: metadata.uploadDate,
-                originalUrl: metadata.originalUrl
-              }
-            });
           }
         }
       }
-    }
-
-    // Fallback/Legacy: Check root videos folder
-    const videosDir = path.join(process.cwd(), 'public', 'videos');
-    if (await fs.pathExists(videosDir)) {
-      const files = await fs.readdir(videosDir);
-      const validExtensions = ['.mp4', '.mov', '.webm'];
-      const legacyVideos = files
-        .filter(file => validExtensions.includes(path.extname(file).toLowerCase()))
-        .map(file => ({
-          id: file,
-          user: '@LocalVideo',
-          caption: formatCaption(file),
-          genre: 'General',
-          src: `/videos/${encodeURIComponent(file)}`
-        }));
-
-      videos = [...videos, ...legacyVideos];
     }
 
     if (videos.length === 0) {
