@@ -68,6 +68,8 @@ class AppwriteService {
             await this.ensureTable(TABLE_QUESTIONNAIRES, [
                 { key: 'participantId', type: 'string', size: 255, required: true },
                 { key: 'answers', type: 'string', size: 10000, required: true }, // JSON string
+                { key: 'screenTime', type: 'string', size: 1000, required: true }, // JSON string
+                { key: 'shortFormPercentage', type: 'integer', required: true },
                 { key: 'timestamp', type: 'string', size: 64, required: true }
             ]);
 
@@ -136,6 +138,9 @@ class AppwriteService {
             // Handle JSON fields
             if (tableId === TABLE_QUESTIONNAIRES && typeof documentData.answers === 'object') {
                 documentData.answers = JSON.stringify(documentData.answers);
+            }
+            if (tableId === TABLE_QUESTIONNAIRES && typeof documentData.screenTime === 'object') {
+                documentData.screenTime = JSON.stringify(documentData.screenTime);
             }
             if (tableId === TABLE_SESSIONS && typeof documentData.events === 'object') {
                 documentData.events = JSON.stringify(documentData.events);
