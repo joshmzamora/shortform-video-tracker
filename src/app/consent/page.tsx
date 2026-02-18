@@ -95,30 +95,30 @@ export default function ConsentPage() {
   return (
     <main className="flex min-h-screen items-center justify-center bg-background p-4 md:p-8">
       <AlertDialog open={showSuccessDialog} onOpenChange={setShowSuccessDialog}>
-        <AlertDialogContent className="max-w-xl">
+        <AlertDialogContent className="max-w-lg">
           <AlertDialogHeader>
-            <AlertDialogTitle className="text-2xl">Thank You for Participating!</AlertDialogTitle>
+            <AlertDialogTitle className="text-2xl">Consent Submitted!</AlertDialogTitle>
             <AlertDialogDescription className="space-y-4 pt-4 text-left">
-              <div className="bg-muted p-4 rounded-md border border-primary/20">
-                <p className="font-semibold text-foreground">Your Participant ID: <span className="text-primary text-lg">{participantId}</span></p>
-                <p className="text-sm mt-1">Please write this down or take a screenshot. You will need it for the next steps.</p>
+              <div className="bg-muted p-4 rounded-md border">
+                <p className="font-semibold text-foreground">Your Participant ID is: <span className="font-bold text-primary text-lg tracking-wider">{participantId}</span></p>
+                <p className="text-sm mt-1 text-muted-foreground">Please save this. You will need it for the next steps.</p>
               </div>
 
               <div className="space-y-2">
-                <p><strong>Reminder:</strong> Please ensure <strong>Screen Time</strong> (iOS) or <strong>Digital Wellbeing</strong> (Android) is enabled on your device right now.</p>
-
-                <p>The questionnaire and experiment are scheduled to begin in the next <strong>1-2 weeks</strong>.</p>
-
-                <p className="text-sm text-muted-foreground">
-                  Both the questionnaire and experiment can be done completely online on your own device in a quiet, undisturbed environment. More details will be provided prior to the experiment.
+                <p>You can now proceed to the questionnaire or close this window and continue later.</p>
+                <p className="text-sm text-muted-foreground pt-2">
+                  <strong>Reminder:</strong> The experiment is scheduled to begin in the next <strong>1-2 weeks</strong>. The researcher, Joshua Zamora, will notify all participants when it opens.
                 </p>
-
-                <p className="italic text-sm pt-2">Joshua Zamora, the researcher, will send out a notice to all participants when the experiment opens.</p>
               </div>
             </AlertDialogDescription>
           </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogAction onClick={() => router.push('/')}>Return to Home</AlertDialogAction>
+          <AlertDialogFooter className="sm:justify-start gap-2 pt-4">
+            <Button onClick={() => router.push(`/questionnaire?participantId=${participantId}`)}>
+              Continue to Questionnaire
+            </Button>
+            <Button variant="outline" onClick={() => setShowSuccessDialog(false)}>
+              Close & Continue Later
+            </Button>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
