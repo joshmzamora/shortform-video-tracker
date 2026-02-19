@@ -12,46 +12,20 @@ type TikTokPlayerProps = {
 };
 
 export function TikTokPlayer({ video, isActive, onInteraction }: TikTokPlayerProps) {
-  const [embedHtml, setEmbedHtml] = useState<string | null>(null);
-  const [error, setError] = useState<string | null>(null);
   const ref = useRef<HTMLDivElement>(null);
   const intersectionObserver = useRef<IntersectionObserver | null>(null);
-  const visibilityTimer = useRef<NodeJS.Timeout | null>(null);
   const viewStartTime = useRef<number | null>(null);
 
   useEffect(() => {
-    const fetchOembed = async () => {
-      try {
-        const response = await fetch(`https://www.tiktok.com/oembed?url=${video.src}`);
-        const data = await response.json();
-        if (response.ok) {
-          const cleanedHtml = data.html.replace(/style=".*?"/, '');
-          setEmbedHtml(cleanedHtml);
-        } else {
-          setError(data.message || 'Failed to load TikTok video.');
-        }
-      } catch (error) {
-        console.error("Failed to fetch TikTok oEmbed:", error);
-        setError('Failed to load TikTok video.');
-      }
+    const script = document.createElement('script');
+    script.src = "https://www.tiktok.com/embed.js";
+    script.async = true;
+    document.body.appendChild(script);
+
+    return () => {
+      document.body.removeChild(script);
     };
-
-    if (video.src.includes('tiktok')) {
-      fetchOembed();
-    }
-  }, [video.src]);
-
-  useEffect(() => {
-    if (embedHtml) {
-      // Ensure the script is loaded only once
-      if (!document.querySelector('script[src="https://www.tiktok.com/embed.js"]')) {
-        const script = document.createElement('script');
-        script.src = 'https://www.tiktok.com/embed.js';
-        script.async = true;
-        document.body.appendChild(script);
-      }
-    }
-  }, [embedHtml]);
+  }, []);
 
   useEffect(() => {
     const currentRef = ref.current;
@@ -94,18 +68,15 @@ export function TikTokPlayer({ video, isActive, onInteraction }: TikTokPlayerPro
       ref={ref}
       className="h-full w-full flex justify-center items-center bg-black"
     >
-      {error ? (
-        <div className="text-red-500">{error}</div>
-      ) : embedHtml ? (
-        <div className="relative w-full h-full max-w-[calc(100vh*9/16)] aspect-[9/16] bg-black">
-          <div
-            className="tiktok-embed absolute top-0 left-0 w-full h-full"
-            dangerouslySetInnerHTML={{ __html: embedHtml }}
-          />
-        </div>
-      ) : (
-        <div className="text-white">Loading TikTok...</div>
-      )}
+      <div className="relative w-full h-full max-w-[calc(100vh*9/16)] aspect-[9/16] bg-black">
+        <iframe
+          src={`https://www.tiktok.com/embed/v3/${video.src.split('/').pop()}`}
+          className="absolute top-0 left-0 w-full h-full border-0"
+          allowFullScreen
+          title="TikTok video"
+          sandbox="allow-popups allow-popups-to-escape-sandbox allow-scripts allow-top-navigation allow-same-origin"
+        />
+      </div>
     </div>
   );
 }
