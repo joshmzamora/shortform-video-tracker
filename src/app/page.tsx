@@ -25,16 +25,16 @@ export default function Home() {
         </CardHeader>
         <CardContent className="flex flex-col gap-4 pt-4">
           <Button size="lg" variant="outline" onClick={() => handleNavigation('/consent')} disabled={!!loading}>
-             {loading === '/consent' ? <Loader2 className="mr-2 animate-spin" /> : <FileText className="mr-2" />}
-             {loading === '/consent' ? 'Loading...' : 'Consent Form'}
+            {loading === '/consent' ? <Loader2 className="mr-2 animate-spin" /> : <FileText className="mr-2" />}
+            {loading === '/consent' ? 'Loading...' : 'Consent Form'}
           </Button>
-          <Button size="lg" variant="ghost" className="opacity-50 cursor-not-allowed" disabled={true}>
-            <ListChecks className="mr-2" />
-            Questionnaire
+          <Button size="lg" variant="outline" onClick={() => handleNavigation('/questionnaire')} disabled={!!loading}>
+            {loading === '/questionnaire' ? <Loader2 className="mr-2 animate-spin" /> : <ListChecks className="mr-2" />}
+            {loading === '/questionnaire' ? 'Loading...' : 'Questionnaire'}
           </Button>
-          <Button size="lg" variant="ghost" className="opacity-50 cursor-not-allowed" disabled={true}>
-            <PlaySquare className="mr-2" />
-            Experiment
+          <Button size="lg" variant="outline" onClick={() => handleNavigation('/session')} disabled={!!loading}>
+            {loading === '/session' ? <Loader2 className="mr-2 animate-spin" /> : <PlaySquare className="mr-2" />}
+            {loading === '/session' ? 'Loading...' : 'Experiment'}
           </Button>
         </CardContent>
       </Card>

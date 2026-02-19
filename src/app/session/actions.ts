@@ -12,7 +12,7 @@ type SessionData = any;
 export async function getVideos(): Promise<{ success: boolean; videos: Video[]; message?: string }> {
   try {
     const videosDir = path.join(process.cwd(), 'public', 'videos');
-    const genres = ['doomscroll', 'Educational', 'entertainment', 'inspirational', 'relatable'];
+    const genres = ['doomscroll', 'educational', 'entertainment', 'inspirational', 'relatable'];
     let videos: Video[] = [];
 
     for (const genre of genres) {
