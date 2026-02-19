@@ -7,14 +7,14 @@ import type { VideoInteraction } from './video-player';
 
 type TikTokPlayerProps = {
   video: Video;
-  isActive: boolean;
   onInteraction: (interaction: Omit<VideoInteraction, 'interactionType'>) => void;
 };
 
-export function TikTokPlayer({ video, isActive, onInteraction }: TikTokPlayerProps) {
+export function TikTokPlayer({ video, onInteraction }: TikTokPlayerProps) {
   const ref = useRef<HTMLDivElement>(null);
   const intersectionObserver = useRef<IntersectionObserver | null>(null);
   const viewStartTime = useRef<number | null>(null);
+  const totalWatchTime = useRef(0);
 
   useEffect(() => {
     const script = document.createElement('script');
@@ -29,15 +29,18 @@ export function TikTokPlayer({ video, isActive, onInteraction }: TikTokPlayerPro
 
   useEffect(() => {
     const currentRef = ref.current;
-    if (!currentRef || !isActive) return;
+    if (!currentRef) return;
 
     const handleIntersection = (entries: IntersectionObserverEntry[]) => {
       entries.forEach(entry => {
         if (entry.isIntersecting) {
+          // Video is in view
           viewStartTime.current = Date.now();
         } else if (viewStartTime.current) {
+          // Video is out of view
           const watchTimeMs = Date.now() - viewStartTime.current;
-          onInteraction({ videoId: video.id, watchTimeMs });
+          totalWatchTime.current += watchTimeMs;
+          onInteraction({ videoId: video.id, watchTimeMs, totalWatchTimeMs: totalWatchTime.current });
           viewStartTime.current = null;
         }
       });
@@ -57,11 +60,12 @@ export function TikTokPlayer({ video, isActive, onInteraction }: TikTokPlayerPro
       }
       if (viewStartTime.current) {
         const watchTimeMs = Date.now() - viewStartTime.current;
-        onInteraction({ videoId: video.id, watchTimeMs });
+        totalWatchTime.current += watchTimeMs;
+        onInteraction({ videoId: video.id, watchTimeMs: totalWatchTime.current });
         viewStartTime.current = null;
       }
     };
-  }, [isActive, onInteraction, video.id]);
+  }, [onInteraction, video.id]);
 
   return (
     <div

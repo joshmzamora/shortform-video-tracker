@@ -12,16 +12,16 @@ export type VideoInteraction = {
   videoId: string;
   interactionType: InteractionType;
   watchTimeMs: number;
+  dwellTimeMs?: number;
+  retentionRate?: number;
 };
 
 type VideoPlayerProps = {
   video: Video;
-  isActive: boolean;
   onInteraction: (interaction: VideoInteraction) => void;
-  getWatchTime: () => number;
 };
 
-export function VideoPlayer({ video, isActive, onInteraction, getWatchTime }: VideoPlayerProps) {
+export function VideoPlayer({ video, onInteraction }: VideoPlayerProps) {
   const [isLiked, setIsLiked] = useState(false);
   const videoRef = useRef<HTMLVideoElement>(null);
   const [isPlaying, setIsPlaying] = useState(false);
@@ -29,6 +29,9 @@ export function VideoPlayer({ video, isActive, onInteraction, getWatchTime }: Vi
   const [duration, setDuration] = useState(0);
   const [showControls, setShowControls] = useState(false);
   const { toast } = useToast();
+  const intersectionObserver = useRef<IntersectionObserver | null>(null);
+  const dwellTimeStart = useRef<number | null>(null);
+  const totalWatchTime = useRef(0);
 
   // Handle Play/Pause
   const togglePlay = () => {
@@ -51,16 +54,16 @@ export function VideoPlayer({ video, isActive, onInteraction, getWatchTime }: Vi
     const newLikedState = !isLiked;
     setIsLiked(newLikedState);
     if (newLikedState) {
-      onInteraction({ videoId: video.id, interactionType: 'like', watchTimeMs: getWatchTime() });
+      onInteraction({ videoId: video.id, interactionType: 'like', watchTimeMs: totalWatchTime.current });
     }
   };
 
   const handleComment = () => {
-    onInteraction({ videoId: video.id, interactionType: 'comment', watchTimeMs: getWatchTime() });
+    onInteraction({ videoId: video.id, interactionType: 'comment', watchTimeMs: totalWatchTime.current });
   };
 
   const handleShare = async () => {
-    onInteraction({ videoId: video.id, interactionType: 'share', watchTimeMs: getWatchTime() });
+    onInteraction({ videoId: video.id, interactionType: 'share', watchTimeMs: totalWatchTime.current });
 
     // Copy link logic
     const shareUrl = typeof window !== 'undefined' ? `${window.location.origin}${video.src}` : video.src;
@@ -102,27 +105,52 @@ export function VideoPlayer({ video, isActive, onInteraction, getWatchTime }: Vi
     return () => videoEl.removeEventListener('timeupdate', handleTimeUpdate);
   }, []);
 
-  // Handle Play/Pause based on isActive prop
   useEffect(() => {
     const videoEl = videoRef.current;
     if (!videoEl) return;
 
-    if (isActive) {
-      // Reset video if coming back to it? Or just play.
-      // TikTok restarts loops but resumes scrolling?
-      // Typically: play()
-      videoEl.play().catch(e => {
-        console.log("Autoplay blocked or failed", e);
-        setIsPlaying(false);
+    const handleIntersection = (entries: IntersectionObserverEntry[]) => {
+      entries.forEach(entry => {
+        if (entry.isIntersecting) {
+          // Video is in view
+          dwellTimeStart.current = Date.now();
+          videoEl.play().catch(e => {
+            console.log("Autoplay blocked or failed", e);
+            setIsPlaying(false);
+          });
+          setIsPlaying(true);
+        } else {
+          // Video is out of view
+          if (dwellTimeStart.current) {
+            const dwellTime = Date.now() - dwellTimeStart.current;
+            totalWatchTime.current += dwellTime;
+            const retention = duration > 0 ? (totalWatchTime.current / (duration * 1000)) : 0;
+            onInteraction({
+              videoId: video.id,
+              interactionType: 'view',
+              watchTimeMs: totalWatchTime.current,
+              dwellTimeMs: dwellTime,
+              retentionRate: retention,
+            });
+          }
+          videoEl.pause();
+          setIsPlaying(false);
+        }
       });
-      setIsPlaying(true);
-    } else {
-      videoEl.pause();
-      setIsPlaying(false);
-      // Optional: reset time to 0?
-      // videoEl.currentTime = 0;
-    }
-  }, [isActive]);
+    };
+
+    intersectionObserver.current = new IntersectionObserver(handleIntersection, {
+      threshold: 0.5, // 50% of the video must be visible
+    });
+
+    intersectionObserver.current.observe(videoEl);
+
+    return () => {
+      if (intersectionObserver.current) {
+        intersectionObserver.current.disconnect();
+      }
+    };
+  }, [video.id, onInteraction]);
 
   const onPlay = () => setIsPlaying(true);
   const onPause = () => setIsPlaying(false);

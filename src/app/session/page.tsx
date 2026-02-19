@@ -125,6 +125,8 @@ function SessionPage() {
       participantId: participantId!,
       genre: videoList[currentVideoIndex].genre,
       timestamp: new Date().toISOString(),
+      dwellTimeMs: finalWatchTime, // For the last video, dwell time is the same as watch time
+      retentionRate: 0, // Cannot calculate retention for the last video without its duration
     };
 
     const finalData = [...sessionDataRef.current, finalViewRecord];
@@ -207,7 +209,7 @@ function SessionPage() {
       <div className="relative h-[100dvh] w-screen bg-white overflow-hidden">
         <Carousel
           setApi={setApi}
-          opts={{ 
+          opts={{
             align: "start",
             axis: "y",
             dragFree: false,
@@ -223,15 +225,12 @@ function SessionPage() {
                 {video.src.includes('tiktok') ? (
                   <TikTokPlayer
                     video={video}
-                    isActive={index === currentVideoIndex}
                     onInteraction={handleInteraction}
                   />
                 ) : (
                   <VideoPlayer
                     video={video}
-                    isActive={index === currentVideoIndex}
                     onInteraction={handleInteraction}
-                    getWatchTime={() => watchTimeStartRef.current > 0 ? Date.now() - watchTimeStartRef.current : 0}
                   />
                 )}
               </CarouselItem>
