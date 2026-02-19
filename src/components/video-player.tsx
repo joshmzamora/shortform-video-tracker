@@ -19,10 +19,15 @@ export type VideoInteraction = {
 type VideoPlayerProps = {
   video: Video;
   onInteraction: (interaction: VideoInteraction) => void;
-  getWatchTime: () => number;
+  disableSocialButtons?: boolean;
 };
 
-export function VideoPlayer({ video, isActive, onInteraction, getWatchTime }: VideoPlayerProps) {
+export type VideoPlayerRef = {
+  play: () => void;
+  pause: () => void;
+};
+
+export const VideoPlayer = forwardRef<VideoPlayerRef, VideoPlayerProps>(({ video, onInteraction, disableSocialButtons }, ref) => {
   const [isLiked, setIsLiked] = useState(false);
   const videoRef = useRef<HTMLVideoElement>(null);
   const [isPlaying, setIsPlaying] = useState(false);
@@ -30,6 +35,24 @@ export function VideoPlayer({ video, isActive, onInteraction, getWatchTime }: Vi
   const [duration, setDuration] = useState(0);
   const [showControls, setShowControls] = useState(false);
   const { toast } = useToast();
+  const intersectionObserver = useRef<IntersectionObserver | null>(null);
+  const dwellTimeStart = useRef<number | null>(null);
+  const totalWatchTime = useRef(0);
+
+  useImperativeHandle(ref, () => ({
+    play: () => {
+      if (videoRef.current) {
+        videoRef.current.play();
+        setIsPlaying(true);
+      }
+    },
+    pause: () => {
+      if (videoRef.current) {
+        videoRef.current.pause();
+        setIsPlaying(false);
+      }
+    },
+  }));
 
   // Handle Play/Pause
   const togglePlay = () => {
