@@ -28,6 +28,7 @@ interface Comment {
 interface VideoCommentsProps {
     videoId: string // Internal ID (may be suffixed)
     realVideoId?: string // Actual YouTube ID
+    disabled?: boolean
 }
 
 // Mock comments generator since public APIs are rate-limited/blocked
@@ -78,7 +79,7 @@ const generateMockComments = (videoId: string): Comment[] => {
     });
 }
 
-export function VideoComments({ videoId, realVideoId }: VideoCommentsProps) {
+export function VideoComments({ videoId, realVideoId, disabled }: VideoCommentsProps) {
     const [comments, setComments] = React.useState<Comment[]>([])
     const [loading, setLoading] = React.useState(false)
     const [usingMock, setUsingMock] = React.useState(false)
@@ -120,11 +121,13 @@ export function VideoComments({ videoId, realVideoId }: VideoCommentsProps) {
     return (
         <Sheet>
             <SheetTrigger asChild>
-                <Button variant="ghost" size="icon" className="flex flex-col gap-1 h-auto text-white hover:bg-white/20 hover:text-white">
-                    <MessageCircle className="h-8 w-8" />
-                    <span className="text-xs font-semibold">
-                        {comments.length > 0 ? (usingMock ? "1.2K" : comments.length) : "..."}
-                    </span>
+                <Button
+                    variant="ghost"
+                    size="icon"
+                    disabled={disabled}
+                    className="flex h-12 w-12 items-center justify-center rounded-full bg-white/10 backdrop-blur-md text-white transition-transform duration-200 hover:scale-110 active:scale-95 hover:bg-white/20 disabled:cursor-not-allowed disabled:opacity-50"
+                >
+                    <MessageCircle className="h-6 w-6" />
                 </Button>
             </SheetTrigger>
             <SheetContent side="right" className="w-full sm:w-[400px] p-0 bg-background text-foreground">

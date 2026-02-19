@@ -92,15 +92,20 @@ export async function saveSessionData(data: SessionData[]) {
   }
 }
 
-export async function saveInteraction(data: SessionData) {
+export async function saveInteraction(sessionId: string, data: SessionData) {
   // Immediate Transmission
   // Saves a single interaction event
   if (!data) {
     return { success: false, message: "No data to save." };
   }
 
+  const documentData = {
+    ...data,
+    sessionId,
+  };
+
   try {
-    const success = await appwriteService.saveDocument(Tables.Sessions, data);
+    const success = await appwriteService.saveDocument(Tables.Sessions, documentData);
     if (!success) throw new Error("Appwrite save failed");
 
     return { success: true, message: "Interaction saved." };

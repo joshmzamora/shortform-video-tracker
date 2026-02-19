@@ -2,14 +2,9 @@
 
 import { Suspense, useCallback, useEffect, useState, useRef } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
-import {
-  Carousel,
-  CarouselContent,
-  CarouselItem,
-  type CarouselApi,
-} from "@/components/ui/carousel";
+
 import { TikTokPlayer } from '@/components/tiktok-player';
-import { VideoPlayer, type VideoInteraction } from '@/components/video-player';
+import { VideoPlayer, type VideoInteraction, type VideoPlayerRef } from '@/components/video-player';
 import { SessionTimer } from '@/components/session-timer';
 import { type Video } from '@/lib/videos';
 import { saveSessionData, getVideos, saveInteraction } from './actions';
@@ -19,7 +14,7 @@ import { Loader2, PartyPopper, ServerCrash } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { Textarea } from '@/components/ui/textarea';
 
-import { WheelGesturesPlugin } from 'embla-carousel-wheel-gestures';
+
 
 const SESSION_DURATION_SECONDS = 600; // 10 minutes
 const SKIP_THRESHOLD_MS = 3000; // 3 seconds
@@ -38,11 +33,13 @@ function SessionPage() {
   const { participantId: contextParticipantId, sessionEvents, addSessionEvent, clearSession } = useSession();
   const { toast } = useToast();
 
-  const [api, setApi] = useState<CarouselApi>();
   const [sessionState, setSessionState] = useState<SessionState>('initializing');
   const [sessionData, setSessionData] = useState<SessionData[]>([]);
   const [currentVideoIndex, setCurrentVideoIndex] = useState(0);
+  const videoRefs = useRef<(HTMLDivElement | null)[]>([]);
+  const videoPlayerRefs = useRef<(VideoPlayerRef | null)[]>([]);
   const [videoList, setVideoList] = useState<Video[]>([]);
+  const [sessionId, setSessionId] = useState<string>('');
 
   // Use either context ID or URL param
   const participantId = contextParticipantId || searchParams.get('participantId');
@@ -67,6 +64,8 @@ function SessionPage() {
           setVideoList(result.videos);
           setSessionState('running');
           watchTimeStartRef.current = Date.now();
+          // Generate a unique session ID
+          setSessionId(`${participantId}_${Date.now()}`);
         } else {
           toast({
             variant: "destructive",
@@ -108,12 +107,33 @@ function SessionPage() {
     addSessionEvent(newRecord);
 
     // Immediate Transmission to Server
-    saveInteraction(newRecord).catch(err => console.error("Failed to transmit interaction:", err));
+    if (sessionId) {
+      saveInteraction(sessionId, newRecord).catch(err => console.error("Failed to transmit interaction:", err));
+    }
 
-  }, [participantId, videoList, addSessionEvent]);
+  }, [participantId, videoList, addSessionEvent, sessionId]);
+
+  const handleNext = () => {
+    if (currentVideoIndex < videoList.length - 1) {
+      videoPlayerRefs.current[currentVideoIndex]?.pause();
+      const newIndex = currentVideoIndex + 1;
+      videoRefs.current[newIndex]?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      setCurrentVideoIndex(newIndex);
+      videoPlayerRefs.current[newIndex]?.play();
+    }
+  };
+
+  const handlePrev = () => {
+    if (currentVideoIndex > 0) {
+      videoPlayerRefs.current[currentVideoIndex]?.pause();
+      const newIndex = currentVideoIndex - 1;
+      videoRefs.current[newIndex]?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      setCurrentVideoIndex(newIndex);
+      videoPlayerRefs.current[newIndex]?.play();
+    }
+  };
 
   const handleSessionComplete = useCallback(async () => {
-    setSessionState('exporting');
 
     const finalWatchTime = watchTimeStartRef.current > 0 ? Date.now() - watchTimeStartRef.current : 0;
     if (videoList.length === 0) return; // Guard clause
@@ -125,6 +145,8 @@ function SessionPage() {
       participantId: participantId!,
       genre: videoList[currentVideoIndex].genre,
       timestamp: new Date().toISOString(),
+      dwellTimeMs: finalWatchTime, // For the last video, dwell time is the same as watch time
+      retentionRate: 0, // Cannot calculate retention for the last video without its duration
     };
 
     const finalData = [...sessionDataRef.current, finalViewRecord];
@@ -136,7 +158,7 @@ function SessionPage() {
     // 1. Transmit final event
     let serverSuccess = false;
     try {
-      const result = await saveInteraction(finalViewRecord);
+      const result = await saveInteraction(sessionId, finalViewRecord);
       serverSuccess = result.success;
     } catch (e) {
       console.warn("Server save failed for final event");
@@ -170,29 +192,7 @@ function SessionPage() {
 
   }, [currentVideoIndex, participantId, toast, videoList, addSessionEvent, clearSession]);
 
-  useEffect(() => {
-    if (!api || videoList.length === 0) return;
 
-    const onSelect = (carouselApi: CarouselApi) => {
-      const newIndex = carouselApi.selectedScrollSnap();
-      const previousIndex = currentVideoIndex;
-
-      const watchTimeMs = watchTimeStartRef.current > 0 ? Date.now() - watchTimeStartRef.current : 0;
-      const interactionType = watchTimeMs < SKIP_THRESHOLD_MS ? 'skip' : 'view';
-
-      handleInteraction({
-        videoId: videoList[previousIndex].id,
-        interactionType,
-        watchTimeMs,
-      });
-
-      watchTimeStartRef.current = Date.now();
-      setCurrentVideoIndex(newIndex);
-    };
-
-    api.on("select", onSelect);
-    return () => { api.off("select", onSelect) };
-  }, [api, currentVideoIndex, handleInteraction, videoList]);
 
   if (sessionState === 'initializing') {
     return (
@@ -205,39 +205,56 @@ function SessionPage() {
   if (sessionState === 'running') {
     return (
       <div className="relative h-[100dvh] w-screen bg-white overflow-hidden">
-        <Carousel
-          setApi={setApi}
-          opts={{ 
-            align: "start",
-            axis: "y",
-            dragFree: false,
-            containScroll: "trimSnaps"
-          }}
-          plugins={[WheelGesturesPlugin()]}
-          orientation="vertical"
-          className="h-full w-full"
-        >
-          <CarouselContent className="-mt-0 h-full">
+        <div className="relative h-full w-full overflow-hidden">
+          <div className="h-full w-full flex flex-col overflow-y-scroll snap-y snap-mandatory">
             {videoList.map((video, index) => (
-              <CarouselItem key={video.id} className="pt-0 h-full w-full">
-                {video.src.includes('tiktok') ? (
-                  <TikTokPlayer
-                    video={video}
-                    isActive={index === currentVideoIndex}
-                    onInteraction={handleInteraction}
-                  />
-                ) : (
-                  <VideoPlayer
-                    video={video}
-                    isActive={index === currentVideoIndex}
-                    onInteraction={handleInteraction}
-                    getWatchTime={() => watchTimeStartRef.current > 0 ? Date.now() - watchTimeStartRef.current : 0}
-                  />
-                )}
-              </CarouselItem>
+              <div
+                key={video.id}
+                ref={(el) => { videoRefs.current[index] = el }}
+                className="h-full w-full flex-shrink-0 snap-center flex items-center justify-center"
+              >
+                <div className="relative h-full w-full">
+                  {video.src.includes('tiktok') ? (
+                    <TikTokPlayer
+                      ref={(el) => { videoPlayerRefs.current[index] = el }}
+                      video={video}
+                      onInteraction={handleInteraction}
+                      disableSocialButtons
+                    />
+                  ) : (
+                    <VideoPlayer
+                      ref={(el) => { videoPlayerRefs.current[index] = el }}
+                      video={video}
+                      onInteraction={handleInteraction}
+                      disableSocialButtons
+                    />
+                  )}
+                  <div className="absolute inset-0 z-10" onClick={(e) => e.preventDefault()} />
+                </div>
+              </div>
             ))}
-          </CarouselContent>
-        </Carousel>
+          </div>
+          <div className="absolute right-4 top-1/2 -translate-y-1/2 flex flex-col gap-2">
+            <button
+              onClick={handlePrev}
+              disabled={currentVideoIndex === 0}
+              className="bg-white/50 hover:bg-white/80 text-black rounded-full p-2 disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 15l7-7 7 7" />
+              </svg>
+            </button>
+            <button
+              onClick={handleNext}
+              disabled={currentVideoIndex === videoList.length - 1}
+              className="bg-white/50 hover:bg-white/80 text-black rounded-full p-2 disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+              </svg>
+            </button>
+          </div>
+        </div>
         <SessionTimer
           duration={SESSION_DURATION_SECONDS}
           onComplete={handleSessionComplete}

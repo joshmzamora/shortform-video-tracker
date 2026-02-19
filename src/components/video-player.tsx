@@ -2,7 +2,7 @@ import { Heart, MessageCircle, Share2, Music4, Play, Pause } from 'lucide-react'
 import type { Video } from '@/lib/videos';
 import { cn } from '@/lib/utils';
 import { VideoComments } from '@/components/video-comments';
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, forwardRef, useImperativeHandle } from 'react';
 import { Slider } from '@/components/ui/slider';
 import { useToast } from '@/hooks/use-toast';
 
@@ -12,16 +12,22 @@ export type VideoInteraction = {
   videoId: string;
   interactionType: InteractionType;
   watchTimeMs: number;
+  dwellTimeMs?: number;
+  retentionRate?: number;
 };
 
 type VideoPlayerProps = {
   video: Video;
-  isActive: boolean;
   onInteraction: (interaction: VideoInteraction) => void;
-  getWatchTime: () => number;
+  disableSocialButtons?: boolean;
 };
 
-export function VideoPlayer({ video, isActive, onInteraction, getWatchTime }: VideoPlayerProps) {
+export type VideoPlayerRef = {
+  play: () => void;
+  pause: () => void;
+};
+
+export const VideoPlayer = forwardRef<VideoPlayerRef, VideoPlayerProps>(({ video, onInteraction, disableSocialButtons }, ref) => {
   const [isLiked, setIsLiked] = useState(false);
   const videoRef = useRef<HTMLVideoElement>(null);
   const [isPlaying, setIsPlaying] = useState(false);
@@ -29,6 +35,24 @@ export function VideoPlayer({ video, isActive, onInteraction, getWatchTime }: Vi
   const [duration, setDuration] = useState(0);
   const [showControls, setShowControls] = useState(false);
   const { toast } = useToast();
+  const intersectionObserver = useRef<IntersectionObserver | null>(null);
+  const dwellTimeStart = useRef<number | null>(null);
+  const totalWatchTime = useRef(0);
+
+  useImperativeHandle(ref, () => ({
+    play: () => {
+      if (videoRef.current) {
+        videoRef.current.play();
+        setIsPlaying(true);
+      }
+    },
+    pause: () => {
+      if (videoRef.current) {
+        videoRef.current.pause();
+        setIsPlaying(false);
+      }
+    },
+  }));
 
   // Handle Play/Pause
   const togglePlay = () => {
@@ -51,16 +75,16 @@ export function VideoPlayer({ video, isActive, onInteraction, getWatchTime }: Vi
     const newLikedState = !isLiked;
     setIsLiked(newLikedState);
     if (newLikedState) {
-      onInteraction({ videoId: video.id, interactionType: 'like', watchTimeMs: getWatchTime() });
+      onInteraction({ videoId: video.id, interactionType: 'like', watchTimeMs: totalWatchTime.current });
     }
   };
 
   const handleComment = () => {
-    onInteraction({ videoId: video.id, interactionType: 'comment', watchTimeMs: getWatchTime() });
+    onInteraction({ videoId: video.id, interactionType: 'comment', watchTimeMs: totalWatchTime.current });
   };
 
   const handleShare = async () => {
-    onInteraction({ videoId: video.id, interactionType: 'share', watchTimeMs: getWatchTime() });
+    onInteraction({ videoId: video.id, interactionType: 'share', watchTimeMs: totalWatchTime.current });
 
     // Copy link logic
     const shareUrl = typeof window !== 'undefined' ? `${window.location.origin}${video.src}` : video.src;
@@ -102,27 +126,52 @@ export function VideoPlayer({ video, isActive, onInteraction, getWatchTime }: Vi
     return () => videoEl.removeEventListener('timeupdate', handleTimeUpdate);
   }, []);
 
-  // Handle Play/Pause based on isActive prop
   useEffect(() => {
     const videoEl = videoRef.current;
     if (!videoEl) return;
 
-    if (isActive) {
-      // Reset video if coming back to it? Or just play.
-      // TikTok restarts loops but resumes scrolling?
-      // Typically: play()
-      videoEl.play().catch(e => {
-        console.log("Autoplay blocked or failed", e);
-        setIsPlaying(false);
+    const handleIntersection = (entries: IntersectionObserverEntry[]) => {
+      entries.forEach(entry => {
+        if (entry.isIntersecting) {
+          // Video is in view
+          dwellTimeStart.current = Date.now();
+          videoEl.play().catch(e => {
+            console.log("Autoplay blocked or failed", e);
+            setIsPlaying(false);
+          });
+          setIsPlaying(true);
+        } else {
+          // Video is out of view
+          if (dwellTimeStart.current) {
+            const dwellTime = Date.now() - dwellTimeStart.current;
+            totalWatchTime.current += dwellTime;
+            const retention = duration > 0 ? (totalWatchTime.current / (duration * 1000)) : 0;
+            onInteraction({
+              videoId: video.id,
+              interactionType: 'view',
+              watchTimeMs: totalWatchTime.current,
+              dwellTimeMs: dwellTime,
+              retentionRate: retention,
+            });
+          }
+          videoEl.pause();
+          setIsPlaying(false);
+        }
       });
-      setIsPlaying(true);
-    } else {
-      videoEl.pause();
-      setIsPlaying(false);
-      // Optional: reset time to 0?
-      // videoEl.currentTime = 0;
-    }
-  }, [isActive]);
+    };
+
+    intersectionObserver.current = new IntersectionObserver(handleIntersection, {
+      threshold: 0.5, // 50% of the video must be visible
+    });
+
+    intersectionObserver.current.observe(videoEl);
+
+    return () => {
+      if (intersectionObserver.current) {
+        intersectionObserver.current.disconnect();
+      }
+    };
+  }, [video.id, onInteraction]);
 
   const onPlay = () => setIsPlaying(true);
   const onPause = () => setIsPlaying(false);
@@ -197,8 +246,9 @@ export function VideoPlayer({ video, isActive, onInteraction, getWatchTime }: Vi
           <div className="flex flex-col items-center gap-1">
             <button
               onClick={(e) => { e.stopPropagation(); handleLike(); }}
+              disabled={disableSocialButtons}
               aria-label="Like video"
-              className={cn("flex h-12 w-12 items-center justify-center rounded-full bg-white/10 backdrop-blur-md text-white transition-all duration-200 hover:scale-110 active:scale-95 hover:bg-white/20", { "bg-rose-500/80 hover:bg-rose-600 text-white": isLiked })}>
+              className={cn("flex h-12 w-12 items-center justify-center rounded-full bg-white/10 backdrop-blur-md text-white transition-all duration-200 hover:scale-110 active:scale-95 hover:bg-white/20 disabled:cursor-not-allowed disabled:opacity-50", { "bg-rose-500/80 hover:bg-rose-600 text-white": isLiked })}>
               <Heart className={cn("h-6 w-6 transition-all", { "fill-current": isLiked })} />
             </button>
             <span className="text-xs font-semibold drop-shadow-md">
@@ -208,7 +258,7 @@ export function VideoPlayer({ video, isActive, onInteraction, getWatchTime }: Vi
 
           <div className="flex flex-col items-center gap-1">
             <div onClick={(e) => e.stopPropagation()}>
-              <VideoComments videoId={video.id} realVideoId={video.id} />
+              <VideoComments videoId={video.id} realVideoId={video.id} disabled={disableSocialButtons} />
             </div>
             <span className="text-xs font-semibold drop-shadow-md">Comment</span>
           </div>
@@ -217,7 +267,8 @@ export function VideoPlayer({ video, isActive, onInteraction, getWatchTime }: Vi
             <button
               aria-label="Share video"
               onClick={(e) => { e.stopPropagation(); handleShare(); }}
-              className="flex h-12 w-12 items-center justify-center rounded-full bg-white/10 backdrop-blur-md text-white transition-transform duration-200 hover:scale-110 active:scale-95 hover:bg-white/20"
+              disabled={disableSocialButtons}
+              className="flex h-12 w-12 items-center justify-center rounded-full bg-white/10 backdrop-blur-md text-white transition-transform duration-200 hover:scale-110 active:scale-95 hover:bg-white/20 disabled:cursor-not-allowed disabled:opacity-50"
             >
               <Share2 className="h-6 w-6" />
             </button>
@@ -239,4 +290,4 @@ export function VideoPlayer({ video, isActive, onInteraction, getWatchTime }: Vi
       </div>
     </div>
   );
-}
+});
