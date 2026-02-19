@@ -11,24 +11,10 @@ type TikTokPlayerProps = {
   disableSocialButtons?: boolean;
 };
 
-export const TikTokPlayer = forwardRef<VideoPlayerRef, TikTokPlayerProps>(({ video, onInteraction, disableSocialButtons }, ref) => {
-  const containerRef = useRef<HTMLDivElement>(null);
+export function TikTokPlayer({ video, isActive, onInteraction }: TikTokPlayerProps) {
+  const ref = useRef<HTMLDivElement>(null);
   const intersectionObserver = useRef<IntersectionObserver | null>(null);
   const viewStartTime = useRef<number | null>(null);
-  const totalWatchTime = useRef(0);
-
-  // Expose play/pause methods via ref
-  useImperativeHandle(ref, () => ({
-    play: () => {
-      // TikTok iframe doesn't provide direct play/pause API
-      // We can't control the video directly, but we can track when it should be playing
-      console.log('TikTok play requested - iframe control limited');
-    },
-    pause: () => {
-      // TikTok iframe doesn't provide direct play/pause API
-      console.log('TikTok pause requested - iframe control limited');
-    },
-  }));
 
   useEffect(() => {
     const script = document.createElement('script');
@@ -42,8 +28,8 @@ export const TikTokPlayer = forwardRef<VideoPlayerRef, TikTokPlayerProps>(({ vid
   }, []);
 
   useEffect(() => {
-    const currentRef = containerRef.current;
-    if (!currentRef) return;
+    const currentRef = ref.current;
+    if (!currentRef || !isActive) return;
 
     const handleIntersection = (entries: IntersectionObserverEntry[]) => {
       entries.forEach(entry => {
@@ -53,8 +39,7 @@ export const TikTokPlayer = forwardRef<VideoPlayerRef, TikTokPlayerProps>(({ vid
         } else if (viewStartTime.current) {
           // Video is out of view
           const watchTimeMs = Date.now() - viewStartTime.current;
-          totalWatchTime.current += watchTimeMs;
-          onInteraction({ videoId: video.id, watchTimeMs: totalWatchTime.current });
+          onInteraction({ videoId: video.id, watchTimeMs });
           viewStartTime.current = null;
         }
       });

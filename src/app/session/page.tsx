@@ -205,56 +205,39 @@ function SessionPage() {
   if (sessionState === 'running') {
     return (
       <div className="relative h-[100dvh] w-screen bg-white overflow-hidden">
-        <div className="relative h-full w-full overflow-hidden">
-          <div className="h-full w-full flex flex-col overflow-y-scroll snap-y snap-mandatory">
+        <Carousel
+          setApi={setApi}
+          opts={{ 
+            align: "start",
+            axis: "y",
+            dragFree: false,
+            containScroll: "trimSnaps"
+          }}
+          plugins={[WheelGesturesPlugin()]}
+          orientation="vertical"
+          className="h-full w-full"
+        >
+          <CarouselContent className="-mt-0 h-full">
             {videoList.map((video, index) => (
-              <div
-                key={video.id}
-                ref={(el) => { videoRefs.current[index] = el }}
-                className="h-full w-full flex-shrink-0 snap-center flex items-center justify-center"
-              >
-                <div className="relative h-full w-full">
-                  {video.src.includes('tiktok') ? (
-                    <TikTokPlayer
-                      ref={(el) => { videoPlayerRefs.current[index] = el }}
-                      video={video}
-                      onInteraction={handleInteraction}
-                      disableSocialButtons
-                    />
-                  ) : (
-                    <VideoPlayer
-                      ref={(el) => { videoPlayerRefs.current[index] = el }}
-                      video={video}
-                      onInteraction={handleInteraction}
-                      disableSocialButtons
-                    />
-                  )}
-                  <div className="absolute inset-0 z-10" onClick={(e) => e.preventDefault()} />
-                </div>
-              </div>
+              <CarouselItem key={video.id} className="pt-0 h-full w-full">
+                {video.src.includes('tiktok') ? (
+                  <TikTokPlayer
+                    video={video}
+                    isActive={index === currentVideoIndex}
+                    onInteraction={handleInteraction}
+                  />
+                ) : (
+                  <VideoPlayer
+                    video={video}
+                    isActive={index === currentVideoIndex}
+                    onInteraction={handleInteraction}
+                    getWatchTime={() => watchTimeStartRef.current > 0 ? Date.now() - watchTimeStartRef.current : 0}
+                  />
+                )}
+              </CarouselItem>
             ))}
-          </div>
-          <div className="absolute right-4 top-1/2 -translate-y-1/2 flex flex-col gap-2">
-            <button
-              onClick={handlePrev}
-              disabled={currentVideoIndex === 0}
-              className="bg-white/50 hover:bg-white/80 text-black rounded-full p-2 disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 15l7-7 7 7" />
-              </svg>
-            </button>
-            <button
-              onClick={handleNext}
-              disabled={currentVideoIndex === videoList.length - 1}
-              className="bg-white/50 hover:bg-white/80 text-black rounded-full p-2 disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-              </svg>
-            </button>
-          </div>
-        </div>
+          </CarouselContent>
+        </Carousel>
         <SessionTimer
           duration={SESSION_DURATION_SECONDS}
           onComplete={handleSessionComplete}
