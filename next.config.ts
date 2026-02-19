@@ -1,7 +1,6 @@
 import type { NextConfig } from 'next';
 
 const nextConfig: NextConfig = {
-  /* config options here */
   typescript: {
     ignoreBuildErrors: true,
   },
@@ -27,7 +26,7 @@ const nextConfig: NextConfig = {
       },
     ],
   },
-  // @ts-expect-error: turbopack option is valid but missing from type definition
+
   turbopack: {
     root: process.cwd(),
   },
