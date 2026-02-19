@@ -92,14 +92,19 @@ export function TikTokPlayer({ video, isActive, onInteraction }: TikTokPlayerPro
   return (
     <div
       ref={ref}
-      className="h-full w-full flex justify-center items-center bg-white"
+      className="h-full w-full flex justify-center items-center bg-black"
     >
       {error ? (
         <div className="text-red-500">{error}</div>
       ) : embedHtml ? (
-        <div className="tiktok-embed" dangerouslySetInnerHTML={{ __html: embedHtml }} />
+        <div className="relative w-full h-full max-w-[calc(100vh*9/16)] aspect-[9/16] bg-black">
+          <div
+            className="tiktok-embed absolute top-0 left-0 w-full h-full"
+            dangerouslySetInnerHTML={{ __html: embedHtml }}
+          />
+        </div>
       ) : (
-        <div className="text-black">Loading TikTok...</div>
+        <div className="text-white">Loading TikTok...</div>
       )}
     </div>
   );

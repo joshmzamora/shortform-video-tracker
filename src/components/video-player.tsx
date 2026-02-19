@@ -148,12 +148,12 @@ export function VideoPlayer({ video, isActive, onInteraction, getWatchTime }: Vi
       </div>
 
       {/* Main Player Container - Constrained for vertical aspect ratio on desktop, full on mobile */}
-      <div className="relative h-full w-full md:w-[calc(100vh*9/16)] bg-black group shadow-2xl">
+      <div className="relative h-full w-full bg-black group shadow-2xl">
         {/* HTML5 Video Player */}
         <video
           ref={videoRef}
           src={video.src}
-          className="h-full w-full object-cover"
+          className="h-full w-full object-contain"
           loop
           playsInline
           muted={false}

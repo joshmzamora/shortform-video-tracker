@@ -27,11 +27,9 @@ const nextConfig: NextConfig = {
       },
     ],
   },
-  experimental: {
-    // @ts-expect-error: turbopack option is valid but missing from type definition
-    turbopack: {
-      root: process.cwd(),
-    },
+  // @ts-expect-error: turbopack option is valid but missing from type definition
+  turbopack: {
+    root: process.cwd(),
   },
 };
 
