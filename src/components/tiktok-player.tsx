@@ -12,99 +12,85 @@ type TikTokPlayerProps = {
 };
 
 export function TikTokPlayer({ video, isActive, onInteraction }: TikTokPlayerProps) {
-  const [embedHtml, setEmbedHtml] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const ref = useRef<HTMLDivElement>(null);
-  const intersectionObserver = useRef<IntersectionObserver | null>(null);
-  const visibilityTimer = useRef<NodeJS.Timeout | null>(null);
-  const viewStartTime = useRef<number | null>(null);
+  const iframeRef = useRef<HTMLIFrameElement>(null);
+  const watchTimeStartRef = useRef<number | null>(null);
+  const accumulatedWatchTimeRef = useRef(0);
 
+  // Effect to handle messaging from the TikTok iframe
   useEffect(() => {
-    const fetchOembed = async () => {
-      try {
-        const response = await fetch(`https://www.tiktok.com/oembed?url=${video.src}`);
-        const data = await response.json();
-        if (response.ok) {
-          const cleanedHtml = data.html.replace(/style=".*?"/, '');
-          setEmbedHtml(cleanedHtml);
-        } else {
-          setError(data.message || 'Failed to load TikTok video.');
+    const handlePlayerMessage = (event: MessageEvent) => {
+      if (event.source !== iframeRef.current?.contentWindow) {
+        return;
+      }
+
+      const data = event.data;
+      if (data && data['x-tiktok-player']) {
+        switch (data.type) {
+          case 'onStateChange':
+            const state = data.value;
+            if (state === 1) { // Playing
+              watchTimeStartRef.current = Date.now();
+            } else if (watchTimeStartRef.current && (state === 2 || state === 0)) { // Paused or Ended
+              const elapsed = Date.now() - watchTimeStartRef.current;
+              accumulatedWatchTimeRef.current += elapsed;
+              watchTimeStartRef.current = null;
+            }
+            break;
         }
-      } catch (error) {
-        console.error("Failed to fetch TikTok oEmbed:", error);
-        setError('Failed to load TikTok video.');
       }
     };
 
-    if (video.src.includes('tiktok')) {
-      fetchOembed();
-    }
-  }, [video.src]);
-
-  useEffect(() => {
-    if (embedHtml) {
-      // Ensure the script is loaded only once
-      if (!document.querySelector('script[src="https://www.tiktok.com/embed.js"]')) {
-        const script = document.createElement('script');
-        script.src = 'https://www.tiktok.com/embed.js';
-        script.async = true;
-        document.body.appendChild(script);
-      }
-    }
-  }, [embedHtml]);
-
-  useEffect(() => {
-    const currentRef = ref.current;
-    if (!currentRef || !isActive) return;
-
-    const handleIntersection = (entries: IntersectionObserverEntry[]) => {
-      entries.forEach(entry => {
-        if (entry.isIntersecting) {
-          viewStartTime.current = Date.now();
-        } else if (viewStartTime.current) {
-          const watchTimeMs = Date.now() - viewStartTime.current;
-          onInteraction({ videoId: video.id, watchTimeMs });
-          viewStartTime.current = null;
-        }
-      });
-    };
-
-    intersectionObserver.current = new IntersectionObserver(handleIntersection, {
-      root: null,
-      rootMargin: '0px',
-      threshold: 0.5, // 50% of the element is visible
-    });
-
-    intersectionObserver.current.observe(currentRef);
+    window.addEventListener('message', handlePlayerMessage);
 
     return () => {
-      if (intersectionObserver.current) {
-        intersectionObserver.current.disconnect();
-      }
-      if (viewStartTime.current) {
-        const watchTimeMs = Date.now() - viewStartTime.current;
-        onInteraction({ videoId: video.id, watchTimeMs });
-        viewStartTime.current = null;
-      }
+      window.removeEventListener('message', handlePlayerMessage);
     };
+  }, []);
+
+  // Effect to report watch time when the component becomes inactive
+  useEffect(() => {
+    if (!isActive) {
+      let finalWatchTime = accumulatedWatchTimeRef.current;
+      if (watchTimeStartRef.current) {
+        finalWatchTime += Date.now() - watchTimeStartRef.current;
+      }
+
+      if (finalWatchTime > 0) {
+        onInteraction({ videoId: video.id, watchTimeMs: finalWatchTime });
+      }
+
+      // Reset for next time
+      accumulatedWatchTimeRef.current = 0;
+      watchTimeStartRef.current = null;
+    }
   }, [isActive, onInteraction, video.id]);
 
+  if (!video.src || video.src.includes('tiktok.com')) {
+    // This component now expects a video ID, not a full URL.
+    // If we receive a full URL, it's from the old getVideos logic.
+    // We can show an error or try to extract the ID, but for now, we'll show an error.
+    return (
+      <div className="h-full w-full flex justify-center items-center bg-black">
+        <div className="text-red-500">Invalid TikTok Video ID. Please update video data source.</div>
+      </div>
+    );
+  }
+
+  const iframeSrc = `https://www.tiktok.com/player/v1/${video.src}?loop=0&controls=1`;
+
   return (
-    <div
-      ref={ref}
-      className="h-full w-full flex justify-center items-center bg-black"
-    >
+    <div className="h-full w-full flex justify-center items-center bg-black">
       {error ? (
         <div className="text-red-500">{error}</div>
-      ) : embedHtml ? (
-        <div className="relative w-full h-full max-w-[calc(100vh*9/16)] aspect-[9/16] bg-black">
-          <div
-            className="tiktok-embed absolute top-0 left-0 w-full h-full"
-            dangerouslySetInnerHTML={{ __html: embedHtml }}
-          />
-        </div>
       ) : (
-        <div className="text-white">Loading TikTok...</div>
+        <iframe
+          ref={iframeRef}
+          src={iframeSrc}
+          className="w-full h-full max-w-[calc(100vh*9/16)] aspect-[9/16]"
+          allow="autoplay; encrypted-media;"
+          onError={() => setError('Failed to load TikTok video.')}
+        ></iframe>
       )}
     </div>
   );

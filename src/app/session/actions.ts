@@ -23,16 +23,19 @@ export async function getVideos(): Promise<{ success: boolean; videos: Video[]; 
           if (path.extname(file).toLowerCase() === '.txt') {
             const filePath = path.join(genreDir, file);
             const content = await fs.readFile(filePath, 'utf-8');
-            const match = content.match(/cite="(https:\/\/www\.tiktok\.com\/[^\"]+)"/);
-            if (match && match[1]) {
-              const videoId = path.basename(file, '.txt');
-              videos.push({
-                id: `${genre}_${videoId}`,
-                user: '@Unknown',
-                caption: formatCaption(videoId),
-                genre: genre.charAt(0).toUpperCase() + genre.slice(1),
-                src: match[1],
-              });
+            const urlMatch = content.match(/cite="(https:\/\/www\.tiktok\.com\/[^\"]+)"/);
+            if (urlMatch && urlMatch[1]) {
+              const videoIdMatch = urlMatch[1].match(/\/video\/(\d+)/);
+              if (videoIdMatch && videoIdMatch[1]) {
+                const videoId = path.basename(file, '.txt');
+                videos.push({
+                  id: `${genre}_${videoId}`,
+                  user: '@Unknown',
+                  caption: formatCaption(videoId),
+                  genre: genre.charAt(0).toUpperCase() + genre.slice(1),
+                  src: videoIdMatch[1], // Store the video ID
+                });
+              }
             }
           }
         }
