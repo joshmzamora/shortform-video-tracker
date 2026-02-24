@@ -7,7 +7,7 @@ import { TikTokPlayer } from '@/components/tiktok-player';
 import { type Video } from '@/lib/videos';
 import { getVideos, saveInteraction } from './actions';
 import { useSession } from '@/lib/session-context';
-import { Loader2, PartyPopper, ServerCrash } from 'lucide-react';
+import { Loader2, PartyPopper, ServerCrash, ChevronUp, ChevronDown } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { Button } from '@/components/ui/button';
 
@@ -92,6 +92,12 @@ function SessionPage() {
     }
   };
 
+  const handlePrevVideo = () => {
+    if (currentVideoIndex > 0) {
+      setCurrentVideoIndex(currentVideoIndex - 1);
+    }
+  };
+
   if (sessionState === 'initializing') {
     return (
       <div className="flex h-screen w-screen items-center justify-center bg-background">
@@ -129,18 +135,36 @@ function SessionPage() {
   const currentVideo = videoList[currentVideoIndex];
 
   return (
-    <div className="relative h-screen w-screen bg-black flex flex-col items-center justify-center">
-      {currentVideo && (
-        <TikTokPlayer
-          key={currentVideo.id}
-          video={currentVideo}
-          isActive={true} // The player is always active in this simplified view
-          onInteraction={handleInteraction}
-        />
-      )}
-      <div className="absolute bottom-4 right-4">
-        <Button onClick={handleNextVideo}>
-          {currentVideoIndex < videoList.length - 1 ? 'Next Video' : 'Finish Session'}
+    <div className="relative h-screen w-screen bg-black flex items-center justify-center">
+      <div className="relative w-full h-full max-w-[calc(100vh*9/16)] aspect-[9/16]">
+        {currentVideo && (
+          <TikTokPlayer
+            key={currentVideo.id}
+            video={currentVideo}
+            isActive={true}
+            onInteraction={handleInteraction}
+          />
+        )}
+      </div>
+
+      <div className="absolute right-4 top-1/2 -translate-y-1/2 flex flex-col space-y-2">
+        <Button
+          variant="secondary"
+          size="icon"
+          onClick={handlePrevVideo}
+          disabled={currentVideoIndex === 0}
+          className="bg-gray-500 bg-opacity-50 hover:bg-opacity-75 text-white"
+        >
+          <ChevronUp className="h-6 w-6" />
+        </Button>
+        <Button
+          variant="secondary"
+          size="icon"
+          onClick={handleNextVideo}
+          disabled={currentVideoIndex >= videoList.length - 1}
+          className="bg-gray-500 bg-opacity-50 hover:bg-opacity-75 text-white"
+        >
+          <ChevronDown className="h-6 w-6" />
         </Button>
       </div>
     </div>
