@@ -90,7 +90,7 @@ export function TikTokPlayer({ video, isActive, onInteraction }: TikTokPlayerPro
     );
   }
 
-  const iframeSrc = `https://www.tiktok.com/player/v1/${video.src}?loop=0&controls=1&autoplay=1`;
+  const iframeSrc = `https://www.tiktok.com/player/v1/${video.src}?loop=1&controls=1&autoplay=1&unmute=1`;
 
   return (
     <div className="h-full w-full flex justify-center items-center bg-black">
