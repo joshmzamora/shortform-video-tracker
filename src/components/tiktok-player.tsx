@@ -109,13 +109,17 @@ export function TikTokPlayer({ video, isActive, onInteraction }: TikTokPlayerPro
       {error ? (
         <div className="text-red-500">{error}</div>
       ) : (
-        <iframe
-          ref={iframeRef}
-          src={iframeSrc}
-          className="w-full h-full max-w-[calc(100vh*9/16)] aspect-[9/16]"
-          allow="autoplay; encrypted-media;"
-          onError={() => setError('Failed to load TikTok video.')}
-        ></iframe>
+        <div className="relative w-full h-full max-w-[calc(100vh*9/16)] aspect-[9/16]">
+          <iframe
+            ref={iframeRef}
+            src={iframeSrc}
+            className="w-full h-full"
+            allow="autoplay; encrypted-media;"
+            onError={() => setError('Failed to load TikTok video.')}
+          ></iframe>
+          {/* This overlay covers the right-side buttons (like, comment, share) */}
+          <div className="absolute top-0 right-0 h-full w-16 bg-transparent z-10"></div>
+        </div>
       )}
     </div>
   );
