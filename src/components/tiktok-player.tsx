@@ -79,21 +79,6 @@ export function TikTokPlayer({ video, isActive, onInteraction }: TikTokPlayerPro
     }
   }, [isActive, onInteraction, video.id]);
 
-  // Effect to control playback
-  useEffect(() => {
-    const player = iframeRef.current?.contentWindow;
-    if (player && isPlayerReady) {
-      if (isActive) {
-        // A short delay can help ensure the player is responsive to commands after becoming ready.
-        setTimeout(() => {
-          player.postMessage({ 'x-tiktok-player-command': 'play' }, '*');
-        }, 50);
-      } else {
-        player.postMessage({ 'x-tiktok-player-command': 'pause' }, '*');
-      }
-    }
-  }, [isActive, isPlayerReady]);
-
   if (!video.src || video.src.includes('tiktok.com')) {
     // This component now expects a video ID, not a full URL.
     // If we receive a full URL, it's from the old getVideos logic.
@@ -105,7 +90,7 @@ export function TikTokPlayer({ video, isActive, onInteraction }: TikTokPlayerPro
     );
   }
 
-  const iframeSrc = `https://www.tiktok.com/player/v1/${video.src}?loop=0&controls=1`;
+  const iframeSrc = `https://www.tiktok.com/player/v1/${video.src}?loop=0&controls=1&autoplay=1`;
 
   return (
     <div className="h-full w-full flex justify-center items-center bg-black">
