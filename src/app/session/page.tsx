@@ -160,7 +160,7 @@ function SessionPage() {
           size="icon"
           onClick={handlePrevVideo}
           disabled={currentVideoIndex === 0}
-          className="bg-gray-800 bg-opacity-50 hover:bg-opacity-75 text-white rounded-full"
+          className="bg-white/80 hover:bg-white text-black rounded-full shadow-lg"
         >
           <ChevronUp className="h-6 w-6" />
         </Button>
@@ -169,7 +169,7 @@ function SessionPage() {
           size="icon"
           onClick={handleNextVideo}
           disabled={currentVideoIndex >= videoList.length - 1}
-          className="bg-gray-800 bg-opacity-50 hover:bg-opacity-75 text-white rounded-full"
+          className="bg-white/80 hover:bg-white text-black rounded-full shadow-lg"
         >
           <ChevronDown className="h-6 w-6" />
         </Button>
