@@ -84,7 +84,6 @@ export function TikTokPlayer({ video, isActive, onInteraction }: TikTokPlayerPro
     const player = iframeRef.current?.contentWindow;
     if (player && isPlayerReady) {
       if (isActive) {
-        player.postMessage({ 'x-tiktok-player-command': 'play' }, '*');
         player.postMessage({ 'x-tiktok-player-command': 'unmute' }, '*');
       } else {
         player.postMessage({ 'x-tiktok-player-command': 'pause' }, '*');
@@ -103,7 +102,7 @@ export function TikTokPlayer({ video, isActive, onInteraction }: TikTokPlayerPro
     );
   }
 
-  const iframeSrc = `https://www.tiktok.com/player/v1/${video.src}?loop=1&controls=1&unmute=1`;
+  const iframeSrc = `https://www.tiktok.com/player/v1/${video.src}?loop=1&controls=1&autoplay=1&mute=1`;
 
   return (
     <div className="h-full w-full flex justify-center items-center bg-black">
