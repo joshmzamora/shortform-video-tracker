@@ -79,6 +79,19 @@ export function TikTokPlayer({ video, isActive, onInteraction }: TikTokPlayerPro
     }
   }, [isActive, onInteraction, video.id]);
 
+  // Effect to explicitly play or pause the video when its active state changes
+  useEffect(() => {
+    const player = iframeRef.current?.contentWindow;
+    if (player && isPlayerReady) {
+      if (isActive) {
+        player.postMessage({ 'x-tiktok-player-command': 'play' }, '*');
+        player.postMessage({ 'x-tiktok-player-command': 'unmute' }, '*');
+      } else {
+        player.postMessage({ 'x-tiktok-player-command': 'pause' }, '*');
+      }
+    }
+  }, [isActive, isPlayerReady]);
+
   if (!video.src || video.src.includes('tiktok.com')) {
     // This component now expects a video ID, not a full URL.
     // If we receive a full URL, it's from the old getVideos logic.
@@ -90,7 +103,7 @@ export function TikTokPlayer({ video, isActive, onInteraction }: TikTokPlayerPro
     );
   }
 
-  const iframeSrc = `https://www.tiktok.com/player/v1/${video.src}?loop=1&controls=1&autoplay=1&unmute=1`;
+  const iframeSrc = `https://www.tiktok.com/player/v1/${video.src}?loop=1&controls=1&unmute=1`;
 
   return (
     <div className="h-full w-full flex justify-center items-center bg-black">
