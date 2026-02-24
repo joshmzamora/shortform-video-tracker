@@ -135,47 +135,44 @@ function SessionPage() {
   const currentVideo = videoList[currentVideoIndex];
 
   return (
-    <div className="h-screen w-screen bg-black flex items-center justify-center">
-      <div className="flex items-center justify-center">
-        {/* Player container */}
-        <div className="relative h-screen max-h-screen w-auto overflow-hidden">
-          <div
-            className="h-full w-full transition-transform duration-500 ease-in-out"
-            style={{ transform: `translateY(-${currentVideoIndex * 100}vh)` }}
-          >
-            {videoList.map((video, index) => (
-              <div key={video.id} className="h-screen w-screen flex items-center justify-center">
-                <TikTokPlayer
-                  video={video}
-                  isActive={index === currentVideoIndex}
-                  onInteraction={handleInteraction}
-                />
-              </div>
-            ))}
+    <div className="relative h-screen w-screen bg-black overflow-hidden">
+      {/* This div handles the vertical scrolling */}
+      <div
+        className="h-full w-full transition-transform duration-500 ease-in-out"
+        style={{ transform: `translateY(-${currentVideoIndex * 100}vh)` }}
+      >
+        {videoList.map((video, index) => (
+          <div key={video.id} className="h-screen w-screen flex items-center justify-center">
+            {/* TikTokPlayer is centered within each "page" of the scroller */}
+            <TikTokPlayer
+              video={video}
+              isActive={index === currentVideoIndex}
+              onInteraction={handleInteraction}
+            />
           </div>
-        </div>
+        ))}
+      </div>
 
-        {/* Buttons container */}
-        <div className="flex flex-col space-y-2 z-10 ml-4">
-          <Button
-            variant="secondary"
-            size="icon"
-            onClick={handlePrevVideo}
-            disabled={currentVideoIndex === 0}
-            className="bg-gray-800 bg-opacity-50 hover:bg-opacity-75 text-white rounded-full"
-          >
-            <ChevronUp className="h-6 w-6" />
-          </Button>
-          <Button
-            variant="secondary"
-            size="icon"
-            onClick={handleNextVideo}
-            disabled={currentVideoIndex >= videoList.length - 1}
-            className="bg-gray-800 bg-opacity-50 hover:bg-opacity-75 text-white rounded-full"
-          >
-            <ChevronDown className="h-6 w-6" />
-          </Button>
-        </div>
+      {/* Buttons are positioned absolutely on top of the scrolling container */}
+      <div className="absolute top-1/2 -translate-y-1/2 right-4 flex flex-col space-y-2 z-10">
+        <Button
+          variant="secondary"
+          size="icon"
+          onClick={handlePrevVideo}
+          disabled={currentVideoIndex === 0}
+          className="bg-gray-800 bg-opacity-50 hover:bg-opacity-75 text-white rounded-full"
+        >
+          <ChevronUp className="h-6 w-6" />
+        </Button>
+        <Button
+          variant="secondary"
+          size="icon"
+          onClick={handleNextVideo}
+          disabled={currentVideoIndex >= videoList.length - 1}
+          className="bg-gray-800 bg-opacity-50 hover:bg-opacity-75 text-white rounded-full"
+        >
+          <ChevronDown className="h-6 w-6" />
+        </Button>
       </div>
     </div>
   );

@@ -84,7 +84,10 @@ export function TikTokPlayer({ video, isActive, onInteraction }: TikTokPlayerPro
     const player = iframeRef.current?.contentWindow;
     if (player && isPlayerReady) {
       if (isActive) {
-        player.postMessage({ 'x-tiktok-player-command': 'play' }, '*');
+        // A short delay can help ensure the player is responsive to commands after becoming ready.
+        setTimeout(() => {
+          player.postMessage({ 'x-tiktok-player-command': 'play' }, '*');
+        }, 50);
       } else {
         player.postMessage({ 'x-tiktok-player-command': 'pause' }, '*');
       }
