@@ -18,6 +18,8 @@ export function TikTokPlayer({ video, isActive, onInteraction }: TikTokPlayerPro
   const accumulatedWatchTimeRef = useRef(0);
   const videoDurationRef = useRef<number | null>(null);
 
+  const [isPlayerReady, setIsPlayerReady] = useState(false);
+
   // Effect to handle messaging from the TikTok iframe
   useEffect(() => {
     const handlePlayerMessage = (event: MessageEvent) => {
@@ -32,6 +34,7 @@ export function TikTokPlayer({ video, isActive, onInteraction }: TikTokPlayerPro
             if (data.value && typeof data.value.duration === 'number') {
               videoDurationRef.current = data.value.duration * 1000; // convert to ms
             }
+            setIsPlayerReady(true);
             break;
           case 'onStateChange':
             const state = data.value;
@@ -79,17 +82,14 @@ export function TikTokPlayer({ video, isActive, onInteraction }: TikTokPlayerPro
   // Effect to control playback
   useEffect(() => {
     const player = iframeRef.current?.contentWindow;
-    if (player) {
+    if (player && isPlayerReady) {
       if (isActive) {
-        // Use a small delay to ensure the player is ready for commands
-        setTimeout(() => {
-          player.postMessage({ 'x-tiktok-player-command': 'play' }, '*');
-        }, 100); // 100ms delay
+        player.postMessage({ 'x-tiktok-player-command': 'play' }, '*');
       } else {
         player.postMessage({ 'x-tiktok-player-command': 'pause' }, '*');
       }
     }
-  }, [isActive]);
+  }, [isActive, isPlayerReady]);
 
   if (!video.src || video.src.includes('tiktok.com')) {
     // This component now expects a video ID, not a full URL.
