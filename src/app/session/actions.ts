@@ -103,10 +103,19 @@ export async function saveInteraction(data: SessionData) {
   }
 
   try {
-    const success = await appwriteService.saveDocument(Tables.Sessions, data);
+    const documentData = {
+      participantId: data.participantId,
+      videoId: data.videoId,
+      watchTimeMs: data.watchTimeMs,
+      videoDurationMs: data.videoDurationMs,
+      genre: data.genre,
+      timestamp: data.timestamp,
+    };
+
+    const success = await appwriteService.saveDocument(Tables.Sessions, documentData);
     if (!success) throw new Error("Appwrite save failed");
 
-    return { success: true, message: "Interaction saved." };
+    return { success: true, message: "Interaction saved successfully." };
   } catch (error) {
     console.error("Failed to save interaction:", error);
     return { success: false, message: "Failed to save interaction." };

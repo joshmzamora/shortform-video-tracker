@@ -79,6 +79,7 @@ class AppwriteService {
                 { key: 'videoId', type: 'string', size: 255, required: false },
                 { key: 'interactionType', type: 'string', size: 64, required: false },
                 { key: 'watchTimeMs', type: 'integer', required: false },
+                { key: 'videoDurationMs', type: 'integer', required: false },
                 { key: 'genre', type: 'string', size: 64, required: false },
                 { key: 'timestamp', type: 'string', size: 64, required: true },
                 { key: 'events', type: 'string', size: 1000000, required: false } // Large JSON for backups

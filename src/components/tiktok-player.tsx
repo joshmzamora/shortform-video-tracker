@@ -16,6 +16,7 @@ export function TikTokPlayer({ video, isActive, onInteraction }: TikTokPlayerPro
   const iframeRef = useRef<HTMLIFrameElement>(null);
   const watchTimeStartRef = useRef<number | null>(null);
   const accumulatedWatchTimeRef = useRef(0);
+  const videoDurationRef = useRef<number | null>(null);
 
   // Effect to handle messaging from the TikTok iframe
   useEffect(() => {
@@ -27,6 +28,11 @@ export function TikTokPlayer({ video, isActive, onInteraction }: TikTokPlayerPro
       const data = event.data;
       if (data && data['x-tiktok-player']) {
         switch (data.type) {
+          case 'onReady':
+            if (data.value && typeof data.value.duration === 'number') {
+              videoDurationRef.current = data.value.duration * 1000; // convert to ms
+            }
+            break;
           case 'onStateChange':
             const state = data.value;
             if (state === 1) { // Playing
@@ -57,7 +63,11 @@ export function TikTokPlayer({ video, isActive, onInteraction }: TikTokPlayerPro
       }
 
       if (finalWatchTime > 0) {
-        onInteraction({ videoId: video.id, watchTimeMs: finalWatchTime });
+        onInteraction({ 
+          videoId: video.id, 
+          watchTimeMs: finalWatchTime, 
+          videoDurationMs: videoDurationRef.current ?? undefined 
+        });
       }
 
       // Reset for next time
