@@ -7,10 +7,11 @@ import type { VideoInteraction } from './video-player';
 
 type TikTokPlayerProps = {
   video: Video;
+  isActive: boolean;
   onInteraction: (interaction: Omit<VideoInteraction, 'interactionType'>) => void;
 };
 
-export function TikTokPlayer({ video, onInteraction }: TikTokPlayerProps) {
+export function TikTokPlayer({ video, isActive, onInteraction }: TikTokPlayerProps) {
   const [error, setError] = useState<string | null>(null);
   const iframeRef = useRef<HTMLIFrameElement>(null);
   const watchTimeStartRef = useRef<number | null>(null);
@@ -56,9 +57,9 @@ export function TikTokPlayer({ video, onInteraction }: TikTokPlayerProps) {
     };
   }, []);
 
-  // Effect to report watch time when the component unmounts
+  // Effect to report watch time when the component becomes inactive
   useEffect(() => {
-    return () => {
+    if (!isActive) {
       let finalWatchTime = accumulatedWatchTimeRef.current;
       if (watchTimeStartRef.current) {
         finalWatchTime += Date.now() - watchTimeStartRef.current;
@@ -71,8 +72,26 @@ export function TikTokPlayer({ video, onInteraction }: TikTokPlayerProps) {
           videoDurationMs: videoDurationRef.current ?? undefined 
         });
       }
-    };
-  }, [onInteraction, video.id]);
+
+      // Reset for next time
+      accumulatedWatchTimeRef.current = 0;
+      watchTimeStartRef.current = null;
+    }
+  }, [isActive, onInteraction, video.id]);
+
+  // Effect to explicitly play or pause the video when its active state changes
+  useEffect(() => {
+    const player = iframeRef.current?.contentWindow;
+    if (player && isPlayerReady) {
+      if (isActive) {
+        player.postMessage({ 'x-tiktok-player-command': 'play' }, '*');
+        player.postMessage({ 'x-tiktok-player-command': 'unmute' }, '*');
+      } else {
+        player.postMessage({ 'x-tiktok-player-command': 'pause' }, '*');
+        player.postMessage({ 'x-tiktok-player-command': 'mute' }, '*');
+      }
+    }
+  }, [isActive, isPlayerReady]);
 
   if (!video.src || video.src.includes('tiktok.com')) {
     // This component now expects a video ID, not a full URL.
@@ -85,7 +104,7 @@ export function TikTokPlayer({ video, onInteraction }: TikTokPlayerProps) {
     );
   }
 
-  const iframeSrc = `https://www.tiktok.com/player/v1/${video.src}?loop=1&controls=1&autoplay=1&unmute=1`;
+  const iframeSrc = `https://www.tiktok.com/player/v1/${video.src}?loop=1&controls=1`;
 
   return (
     <div className="h-full w-full flex justify-center items-center bg-black">
