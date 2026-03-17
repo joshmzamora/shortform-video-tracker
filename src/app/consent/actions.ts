@@ -8,6 +8,8 @@ export type ConsentData = {
   parentalConsentAgreed: boolean;
   agreed: boolean;
   timestamp: string;
+  isHighSchoolStudent: boolean;
+  isAnonymous: boolean;
 };
 
 export async function saveConsentData(data: ConsentData) {
@@ -26,5 +28,14 @@ export async function saveConsentData(data: ConsentData) {
     console.error("Failed to save consent data:", error);
     const errorMessage = error instanceof Error ? error.message : String(error);
     return { success: false, message: `Failed to save data: ${errorMessage}` };
+  }
+}
+
+export async function getConsentsCount() {
+  try {
+    const consents = await appwriteService.listDocuments(Tables.Consents);
+    return consents.length;
+  } catch (error) {
+    return 0;
   }
 }

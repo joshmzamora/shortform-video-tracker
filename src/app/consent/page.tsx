@@ -10,7 +10,7 @@ import { Label } from '@/components/ui/label';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Separator } from '@/components/ui/separator';
 import { Loader2 } from 'lucide-react';
-import { saveConsentData } from './actions';
+import { saveConsentData, getConsentsCount } from './actions';
 import { useSession } from '@/lib/session-context';
 import { useToast } from '@/hooks/use-toast';
 import {
@@ -31,25 +31,33 @@ export default function ConsentPage() {
   const [parentalConsentAgreed, setParentalConsentAgreed] = useState(false);
   const [participantId, setParticipantId] = useState('');
   const [participantName, setParticipantName] = useState('');
+  const [isHighSchoolStudent, setIsHighSchoolStudent] = useState(false);
+  const [isAnonymous, setIsAnonymous] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [showSuccessDialog, setShowSuccessDialog] = useState(false);
   const currentDate = new Date().toLocaleDateString();
   const { toast } = useToast();
 
   const handleContinue = async () => {
-    if (agreed && parentalConsentAgreed && participantId.trim() && participantName.trim() && !isLoading) {
+    if (agreed && parentalConsentAgreed && (isAnonymous || participantName.trim()) && isHighSchoolStudent && !isLoading) {
       setIsLoading(true);
 
+      const consentsCount = await getConsentsCount();
+      const newParticipantId = `user${(consentsCount + 1).toString().padStart(4, '0')}`;
+      setParticipantId(newParticipantId);
+
       const consentData = {
-        participantId: participantId.trim(),
-        participantName: participantName.trim(),
+        participantId: newParticipantId,
+        participantName: isAnonymous ? 'Anonymous' : participantName.trim(),
         parentalConsentAgreed,
         agreed,
         timestamp: new Date().toISOString(),
+        isHighSchoolStudent,
+        isAnonymous,
       };
 
       // 1. Update In-Memory Session Context (Secure, non-persistent)
-      setContextParticipantId(participantId.trim());
+      setContextParticipantId(newParticipantId);
       setConsent(consentData);
 
       // 2. Transmit to Server Immediately
@@ -67,7 +75,7 @@ export default function ConsentPage() {
         const url = URL.createObjectURL(blob);
         const a = document.createElement('a');
         a.href = url;
-        a.download = `consent-${participantId.trim()}.json`;
+        a.download = `consent-${newParticipantId}.json`;
         document.body.appendChild(a);
         a.click();
         document.body.removeChild(a);
@@ -90,7 +98,7 @@ export default function ConsentPage() {
     }
   };
 
-  const canContinue = agreed && parentalConsentAgreed && participantName.trim() !== '' && participantId.trim() !== '';
+  const canContinue = agreed && parentalConsentAgreed && (isAnonymous || participantName.trim() !== '') && isHighSchoolStudent;
 
   return (
     <main className="flex min-h-screen items-center justify-center bg-background p-4 md:p-8">
@@ -206,6 +214,10 @@ export default function ConsentPage() {
             <Separator />
 
             <p>I voluntarily agree to participate in this research program and I understand that I will be given a copy of this signed Consent Form.</p>
+            <div className="flex items-center space-x-2">
+                <Checkbox id="is-high-school-student" checked={isHighSchoolStudent} onCheckedChange={(checked) => setIsHighSchoolStudent(checked === true)} />
+                <Label htmlFor="is-high-school-student" className="font-bold cursor-pointer">I am a high school student with experience with short form video content.</Label>
+            </div>
             <div className="flex items-center space-x-4">
               <div className="flex items-center space-x-2">
                 <Checkbox id="consent-yes" checked={agreed} onCheckedChange={(checked) => setAgreed(checked === true)} />
@@ -218,24 +230,14 @@ export default function ConsentPage() {
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pt-4">
-              <div className="space-y-2 md:col-span-2">
-                <Label htmlFor="participantId">Participant ID</Label>
-                <Input
-                  id="participantId"
-                  placeholder="e.g., School ID (12345)"
-                  value={participantId}
-                  onChange={(e) => setParticipantId(e.target.value)}
-                  autoFocus
-                  required
-                />
-                <p className="text-sm text-muted-foreground">
-                  This can be anything you want as long as you remember it. We suggest using your School ID since it's easy to remember.
-                </p>
-              </div>
               <div className="space-y-2">
                 <Label htmlFor="participant-name">Name of Participant (print):</Label>
-                <Input id="participant-name" value={participantName} onChange={(e) => setParticipantName(e.target.value)} placeholder="John Doe" />
+                <Input id="participant-name" value={isAnonymous ? 'Anonymous' : participantName} onChange={(e) => setParticipantName(e.target.value)} placeholder="John Doe" disabled={isAnonymous} />
                 <p className="text-sm text-muted-foreground">Signature: (type name to sign)</p>
+              </div>
+              <div className="flex items-center space-x-2">
+                <Checkbox id="is-anonymous" checked={isAnonymous} onCheckedChange={(checked) => setIsAnonymous(checked === true)} />
+                <Label htmlFor="is-anonymous" className="font-bold cursor-pointer">Remain Anonymous</Label>
               </div>
               <div className="space-y-2">
                 <Label>Date:</Label>

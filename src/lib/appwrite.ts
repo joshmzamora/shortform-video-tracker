@@ -62,7 +62,9 @@ class AppwriteService {
                 { key: 'participantName', type: 'string', size: 255, required: true },
                 { key: 'agreed', type: 'boolean', required: true },
                 { key: 'parentalConsentAgreed', type: 'boolean', required: true },
-                { key: 'timestamp', type: 'string', size: 64, required: true }
+                { key: 'timestamp', type: 'string', size: 64, required: true },
+                { key: 'isHighSchoolStudent', type: 'boolean', required: false },
+                { key: 'isAnonymous', type: 'boolean', required: false },
             ]);
 
             await this.ensureTable(TABLE_QUESTIONNAIRES, [
