@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useState, useEffect, useRef } from 'react';
@@ -19,8 +18,34 @@ export function TikTokPlayer({ video, isActive, onInteraction }: TikTokPlayerPro
   const videoDurationRef = useRef<number | null>(null);
 
   const [isPlayerReady, setIsPlayerReady] = useState(false);
+  const isActiveRef = useRef(isActive);
 
-  // Effect to handle messaging from the TikTok iframe
+  // NEW: Track if this specific slide has ever been active
+  const [hasBeenActive, setHasBeenActive] = useState(isActive);
+
+  // Mark the slide as active the first time it comes into view
+  useEffect(() => {
+    if (isActive && !hasBeenActive) {
+      setHasBeenActive(true);
+    }
+  }, [isActive, hasBeenActive]);
+
+  // Keep the ref updated with the latest isActive value
+  useEffect(() => {
+    isActiveRef.current = isActive;
+  }, [isActive]);
+
+  // Helper to post commands to the TikTok player
+  const sendPlayerCommand = (command: string, value?: number) => {
+    if (iframeRef.current?.contentWindow) {
+      iframeRef.current.contentWindow.postMessage(
+        { 'x-tiktok-player-command': command, ...(value !== undefined && { value }) },
+        '*'
+      );
+    }
+  };
+
+  // Set up the TikTok player message listener once
   useEffect(() => {
     const handlePlayerMessage = (event: MessageEvent) => {
       if (event.source !== iframeRef.current?.contentWindow) {
@@ -32,18 +57,30 @@ export function TikTokPlayer({ video, isActive, onInteraction }: TikTokPlayerPro
         switch (data.type) {
           case 'onReady':
             if (data.value && typeof data.value.duration === 'number') {
-              videoDurationRef.current = data.value.duration * 1000; // convert to ms
+              videoDurationRef.current = data.value.duration * 1000;
             }
             setIsPlayerReady(true);
+            
+            // Edge case: If the user swiped away extremely fast while this iframe was still loading
+            if (!isActiveRef.current) {
+              sendPlayerCommand('pause');
+              sendPlayerCommand('mute');
+              sendPlayerCommand('seek', 0);
+            } else {
+              sendPlayerCommand('unmute');
+            }
             break;
+
           case 'onStateChange':
-            const state = data.value;
-            if (state === 1) { // Playing
-              watchTimeStartRef.current = Date.now();
-            } else if (watchTimeStartRef.current && (state === 2 || state === 0)) { // Paused or Ended
-              const elapsed = Date.now() - watchTimeStartRef.current;
-              accumulatedWatchTimeRef.current += elapsed;
-              watchTimeStartRef.current = null;
+            if (isActiveRef.current) {
+              const state = data.value;
+              if (state === 1) { // Playing
+                watchTimeStartRef.current = Date.now();
+              } else if (watchTimeStartRef.current && (state === 2 || state === 0)) { // Paused or Ended
+                const elapsed = Date.now() - watchTimeStartRef.current;
+                accumulatedWatchTimeRef.current += elapsed;
+                watchTimeStartRef.current = null;
+              }
             }
             break;
         }
@@ -51,13 +88,26 @@ export function TikTokPlayer({ video, isActive, onInteraction }: TikTokPlayerPro
     };
 
     window.addEventListener('message', handlePlayerMessage);
-
     return () => {
       window.removeEventListener('message', handlePlayerMessage);
     };
-  }, []);
+  }, []); // Empty deps – runs once
 
-  // Effect to report watch time when the component becomes inactive
+  // Effect to respond to isActive changes after the player is mounted and ready
+  useEffect(() => {
+    if (isPlayerReady) {
+      if (isActive) {
+        sendPlayerCommand('play');
+        sendPlayerCommand('unmute');
+      } else {
+        sendPlayerCommand('pause');
+        sendPlayerCommand('mute');
+        sendPlayerCommand('seek', 0);
+      }
+    }
+  }, [isActive, isPlayerReady]);
+
+  // Report watch time when the component becomes inactive
   useEffect(() => {
     if (!isActive) {
       let finalWatchTime = accumulatedWatchTimeRef.current;
@@ -66,37 +116,38 @@ export function TikTokPlayer({ video, isActive, onInteraction }: TikTokPlayerPro
       }
 
       if (finalWatchTime > 0) {
-        onInteraction({ 
-          videoId: video.id, 
-          watchTimeMs: finalWatchTime, 
-          videoDurationMs: videoDurationRef.current ?? undefined 
+        onInteraction({
+          videoId: video.id,
+          watchTimeMs: finalWatchTime,
+          videoDurationMs: videoDurationRef.current ?? undefined,
         });
       }
 
-      // Reset for next time
       accumulatedWatchTimeRef.current = 0;
       watchTimeStartRef.current = null;
     }
   }, [isActive, onInteraction, video.id]);
 
-  // Effect to explicitly play or pause the video when its active state changes
+  // Report remaining watch time on unmount
   useEffect(() => {
-    const player = iframeRef.current?.contentWindow;
-    if (player && isPlayerReady) {
-      if (isActive) {
-        player.postMessage({ 'x-tiktok-player-command': 'play' }, '*');
-        player.postMessage({ 'x-tiktok-player-command': 'unmute' }, '*');
-      } else {
-        player.postMessage({ 'x-tiktok-player-command': 'pause' }, '*');
-        player.postMessage({ 'x-tiktok-player-command': 'mute' }, '*');
+    return () => {
+      if (accumulatedWatchTimeRef.current > 0 || watchTimeStartRef.current) {
+        let finalWatchTime = accumulatedWatchTimeRef.current;
+        if (watchTimeStartRef.current) {
+          finalWatchTime += Date.now() - watchTimeStartRef.current;
+        }
+        if (finalWatchTime > 0) {
+          onInteraction({
+            videoId: video.id,
+            watchTimeMs: finalWatchTime,
+            videoDurationMs: videoDurationRef.current ?? undefined,
+          });
+        }
       }
-    }
-  }, [isActive, isPlayerReady]);
+    };
+  }, [onInteraction, video.id]);
 
   if (!video.src || video.src.includes('tiktok.com')) {
-    // This component now expects a video ID, not a full URL.
-    // If we receive a full URL, it's from the old getVideos logic.
-    // We can show an error or try to extract the ID, but for now, we'll show an error.
     return (
       <div className="h-full w-full flex justify-center items-center bg-black">
         <div className="text-red-500">Invalid TikTok Video ID. Please update video data source.</div>
@@ -104,7 +155,8 @@ export function TikTokPlayer({ video, isActive, onInteraction }: TikTokPlayerPro
     );
   }
 
-  const iframeSrc = `https://www.tiktok.com/player/v1/${video.src}?loop=1&controls=1`;
+  // We are back to hardcoding autoplay=1, because the iframe won't exist until it's the active slide
+  const iframeSrc = `https://www.tiktok.com/player/v1/${video.src}?loop=1&controls=1&autoplay=1&mute=1`;
 
   return (
     <div className="h-full w-full flex justify-center items-center bg-black">
@@ -112,14 +164,16 @@ export function TikTokPlayer({ video, isActive, onInteraction }: TikTokPlayerPro
         <div className="text-red-500">{error}</div>
       ) : (
         <div className="relative w-full h-full max-w-[calc(100vh*9/16)] aspect-[9/16]">
-          <iframe
-            ref={iframeRef}
-            src={iframeSrc}
-            className="w-full h-full"
-            allow="autoplay; encrypted-media;"
-            onError={() => setError('Failed to load TikTok video.')}
-          ></iframe>
-          {/* This overlay covers the right-side buttons (like, comment, share) */}
+          {/* Only mount the iframe if it is currently active, or has been active in the past */}
+          {hasBeenActive && (
+            <iframe
+              ref={iframeRef}
+              src={iframeSrc}
+              className="w-full h-full"
+              allow="autoplay; encrypted-media;"
+              onError={() => setError('Failed to load TikTok video.')}
+            ></iframe>
+          )}
           <div className="absolute top-0 right-0 h-full w-16 bg-transparent z-10"></div>
         </div>
       )}
