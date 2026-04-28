@@ -5,37 +5,37 @@ import fs from 'fs-extra';
 import path from 'path';
 import { Video, formatCaption } from '@/lib/videos';
 
-// This is a placeholder type. The actual type is defined in the page component.
-// Using 'any' here to avoid circular dependency issues if we were to import.
 type SessionData = any;
 
 export async function getVideos(): Promise<{ success: boolean; videos: Video[]; message?: string }> {
   try {
     const videosDir = path.join(process.cwd(), 'public', 'videos');
     const genres = ['doomscroll', 'educational', 'entertainment', 'inspirational', 'relatable'];
-    let videos: Video[] = [];
+    const videos: Video[] = [];
 
     for (const genre of genres) {
       const genreDir = path.join(videosDir, genre);
-      if (await fs.pathExists(genreDir)) {
-        const files = await fs.readdir(genreDir);
-        for (const file of files) {
-          if (path.extname(file).toLowerCase() === '.txt') {
-            const filePath = path.join(genreDir, file);
-            const content = await fs.readFile(filePath, 'utf-8');
-            const match = content.match(/cite="(https:\/\/www\.tiktok\.com\/[^\"]+)"/);
-            if (match && match[1]) {
-              const videoId = path.basename(file, '.txt');
-              videos.push({
-                id: `${genre}_${videoId}`,
-                user: '@Unknown',
-                caption: formatCaption(videoId),
-                genre: genre.charAt(0).toUpperCase() + genre.slice(1),
-                src: match[1],
-              });
-            }
-          }
-        }
+      if (!(await fs.pathExists(genreDir))) continue;
+
+      const files = await fs.readdir(genreDir);
+      for (const file of files) {
+        if (path.extname(file).toLowerCase() !== '.txt') continue;
+
+        const filePath = path.join(genreDir, file);
+        const content = await fs.readFile(filePath, 'utf-8');
+        const urlMatch = content.match(/cite="(https:\/\/www\.tiktok\.com\/[^\"]+)"/);
+        const videoIdMatch = urlMatch?.[1]?.match(/\/video\/(\d+)/);
+
+        if (!videoIdMatch?.[1]) continue;
+
+        const videoId = path.basename(file, '.txt');
+        videos.push({
+          id: `${genre}_${videoId}`,
+          user: '@Unknown',
+          caption: formatCaption(videoId),
+          genre: genre.charAt(0).toUpperCase() + genre.slice(1),
+          src: videoIdMatch[1],
+        });
       }
     }
 
@@ -43,7 +43,6 @@ export async function getVideos(): Promise<{ success: boolean; videos: Video[]; 
       return { success: false, videos: [], message: "No videos found in the directory." };
     }
 
-    // Shuffle videos for randomness (optional but good for experiment)
     return { success: true, videos: videos.sort(() => 0.5 - Math.random()) };
   } catch (error) {
     console.error("Failed to retrieve videos:", error);
@@ -56,7 +55,6 @@ export async function getComments(videoId: string): Promise<{ success: boolean; 
     const commentsPath = path.join(process.cwd(), 'public', 'videos', 'education', videoId, 'comments.json');
     if (await fs.pathExists(commentsPath)) {
       const comments = await fs.readJson(commentsPath);
-      // Limit to 50 for performance
       return { success: true, comments: comments.slice(0, 50) };
     }
     return { success: false, comments: [], message: "No comments found." };
@@ -67,19 +65,16 @@ export async function getComments(videoId: string): Promise<{ success: boolean; 
 }
 
 export async function saveSessionData(data: SessionData[]) {
-  // Bulk save (Legacy/Backup)
-  // Saves an array of events as a single record (Session)
   if (!data || data.length === 0) {
     return { success: false, message: "No data to save." };
   }
 
   try {
-    // Simplest: Save the entire session array as a single document with a 'type': 'full_session_backup'
     const backupData = {
       participantId: data[0]?.participantId,
       type: 'full_session_backup',
       timestamp: new Date().toISOString(),
-      events: data
+      events: data,
     };
 
     const success = await appwriteService.saveDocument(Tables.Sessions, backupData);
@@ -93,18 +88,22 @@ export async function saveSessionData(data: SessionData[]) {
 }
 
 export async function saveInteraction(sessionId: string, data: SessionData) {
-  // Immediate Transmission
-  // Saves a single interaction event
   if (!data) {
     return { success: false, message: "No data to save." };
   }
 
-  const documentData = {
-    ...data,
-    sessionId,
-  };
-
   try {
+    const documentData = {
+      participantId: data.participantId,
+      videoId: data.videoId,
+      interactionType: data.interactionType,
+      watchTimeMs: data.watchTimeMs,
+      videoDurationMs: data.videoDurationMs,
+      genre: data.genre,
+      timestamp: data.timestamp,
+      sessionId,
+    };
+
     const success = await appwriteService.saveDocument(Tables.Sessions, documentData);
     if (!success) throw new Error("Appwrite save failed");
 

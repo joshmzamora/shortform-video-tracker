@@ -163,6 +163,24 @@ function PrintConsentContent() {
                          </p>
                     </div>
                 )}
+
+                {consent.isHighSchoolStudent && (
+                    <div className="flex items-center gap-2">
+                        <div className="h-4 w-4 border border-black flex items-center justify-center text-xs">X</div>
+                        <p className="text-sm font-bold">
+                            I am a high school student with experience with short form video content.
+                        </p>
+                    </div>
+                )}
+
+                {consent.isAnonymous && (
+                    <div className="flex items-center gap-2">
+                        <div className="h-4 w-4 border border-black flex items-center justify-center text-xs">X</div>
+                        <p className="text-sm font-bold">
+                            I have chosen to remain anonymous.
+                        </p>
+                    </div>
+                )}
             </div>
 
             <div className="grid grid-cols-2 gap-8 mt-12">

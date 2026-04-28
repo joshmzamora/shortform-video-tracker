@@ -1,108 +1,171 @@
-
 "use client";
 
-import { useState, useEffect, useRef, forwardRef, useImperativeHandle } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import type { Video } from '@/lib/videos';
-import type { VideoInteraction, VideoPlayerRef } from './video-player';
+
+export type TikTokInteraction = {
+  videoId: string;
+  watchTimeMs: number;
+  videoDurationMs?: number;
+};
 
 type TikTokPlayerProps = {
   video: Video;
-  onInteraction: (interaction: Omit<VideoInteraction, 'interactionType'>) => void;
-  disableSocialButtons?: boolean;
+  isActive: boolean;
+  onInteraction: (interaction: TikTokInteraction) => void;
 };
 
-export const TikTokPlayer = forwardRef<VideoPlayerRef, TikTokPlayerProps>(({ video, onInteraction, disableSocialButtons }, ref) => {
-  const containerRef = useRef<HTMLDivElement>(null);
-  const intersectionObserver = useRef<IntersectionObserver | null>(null);
-  const viewStartTime = useRef<number | null>(null);
-  const totalWatchTime = useRef(0);
+export function TikTokPlayer({ video, isActive, onInteraction }: TikTokPlayerProps) {
+  const [error, setError] = useState<string | null>(null);
+  const [isPlayerReady, setIsPlayerReady] = useState(false);
+  const [hasBeenActive, setHasBeenActive] = useState(isActive);
 
-  // Expose play/pause methods via ref
-  useImperativeHandle(ref, () => ({
-    play: () => {
-      // TikTok iframe doesn't provide direct play/pause API
-      // We can't control the video directly, but we can track when it should be playing
-      console.log('TikTok play requested - iframe control limited');
-    },
-    pause: () => {
-      // TikTok iframe doesn't provide direct play/pause API
-      console.log('TikTok pause requested - iframe control limited');
-    },
-  }));
+  const iframeRef = useRef<HTMLIFrameElement>(null);
+  const isActiveRef = useRef(isActive);
+  const watchTimeStartRef = useRef<number | null>(null);
+  const accumulatedWatchTimeRef = useRef(0);
+  const videoDurationRef = useRef<number | null>(null);
 
   useEffect(() => {
-    const script = document.createElement('script');
-    script.src = "https://www.tiktok.com/embed.js";
-    script.async = true;
-    document.body.appendChild(script);
+    if (isActive && !hasBeenActive) {
+      setHasBeenActive(true);
+    }
+  }, [hasBeenActive, isActive]);
 
-    return () => {
-      document.body.removeChild(script);
+  useEffect(() => {
+    isActiveRef.current = isActive;
+  }, [isActive]);
+
+  const sendPlayerCommand = (command: string, value?: number) => {
+    if (!iframeRef.current?.contentWindow) return;
+
+    iframeRef.current.contentWindow.postMessage(
+      { 'x-tiktok-player-command': command, ...(value !== undefined ? { value } : {}) },
+      '*'
+    );
+  };
+
+  useEffect(() => {
+    const handlePlayerMessage = (event: MessageEvent) => {
+      if (event.source !== iframeRef.current?.contentWindow) return;
+
+      const data = event.data;
+      if (!data || !data['x-tiktok-player']) return;
+
+      switch (data.type) {
+        case 'onReady':
+          if (data.value && typeof data.value.duration === 'number') {
+            videoDurationRef.current = data.value.duration * 1000;
+          }
+
+          setIsPlayerReady(true);
+
+          if (!isActiveRef.current) {
+            sendPlayerCommand('pause');
+            sendPlayerCommand('mute');
+            sendPlayerCommand('seek', 0);
+          } else {
+            sendPlayerCommand('unmute');
+          }
+          break;
+        case 'onStateChange':
+          if (!isActiveRef.current) return;
+
+          if (data.value === 1) {
+            watchTimeStartRef.current = Date.now();
+          } else if (watchTimeStartRef.current && (data.value === 2 || data.value === 0)) {
+            const elapsed = Date.now() - watchTimeStartRef.current;
+            accumulatedWatchTimeRef.current += elapsed;
+            watchTimeStartRef.current = null;
+          }
+          break;
+      }
     };
+
+    window.addEventListener('message', handlePlayerMessage);
+    return () => window.removeEventListener('message', handlePlayerMessage);
   }, []);
 
   useEffect(() => {
-    const currentRef = containerRef.current;
-    if (!currentRef) return;
+    if (!isPlayerReady) return;
 
-    const handleIntersection = (entries: IntersectionObserverEntry[]) => {
-      entries.forEach(entry => {
-        if (entry.isIntersecting) {
-          // Video is in view
-          viewStartTime.current = Date.now();
-        } else if (viewStartTime.current) {
-          // Video is out of view
-          const watchTimeMs = Date.now() - viewStartTime.current;
-          totalWatchTime.current += watchTimeMs;
-          onInteraction({ videoId: video.id, watchTimeMs: totalWatchTime.current });
-          viewStartTime.current = null;
-        }
+    if (isActive) {
+      sendPlayerCommand('play');
+      sendPlayerCommand('unmute');
+    } else {
+      sendPlayerCommand('pause');
+      sendPlayerCommand('mute');
+      sendPlayerCommand('seek', 0);
+    }
+  }, [isActive, isPlayerReady]);
+
+  useEffect(() => {
+    if (isActive) return;
+
+    let finalWatchTime = accumulatedWatchTimeRef.current;
+    if (watchTimeStartRef.current) {
+      finalWatchTime += Date.now() - watchTimeStartRef.current;
+    }
+
+    if (finalWatchTime > 0) {
+      onInteraction({
+        videoId: video.id,
+        watchTimeMs: finalWatchTime,
+        videoDurationMs: videoDurationRef.current ?? undefined,
       });
-    };
+    }
 
-    intersectionObserver.current = new IntersectionObserver(handleIntersection, {
-      root: null,
-      rootMargin: '0px',
-      threshold: 0.5, // 50% of the element is visible
-    });
+    accumulatedWatchTimeRef.current = 0;
+    watchTimeStartRef.current = null;
+  }, [isActive, onInteraction, video.id]);
 
-    intersectionObserver.current.observe(currentRef);
-
+  useEffect(() => {
     return () => {
-      if (intersectionObserver.current) {
-        intersectionObserver.current.disconnect();
+      if (accumulatedWatchTimeRef.current <= 0 && !watchTimeStartRef.current) return;
+
+      let finalWatchTime = accumulatedWatchTimeRef.current;
+      if (watchTimeStartRef.current) {
+        finalWatchTime += Date.now() - watchTimeStartRef.current;
       }
-      if (viewStartTime.current) {
-        const watchTimeMs = Date.now() - viewStartTime.current;
-        totalWatchTime.current += watchTimeMs;
-        onInteraction({ videoId: video.id, watchTimeMs: totalWatchTime.current });
-        viewStartTime.current = null;
+
+      if (finalWatchTime > 0) {
+        onInteraction({
+          videoId: video.id,
+          watchTimeMs: finalWatchTime,
+          videoDurationMs: videoDurationRef.current ?? undefined,
+        });
       }
     };
   }, [onInteraction, video.id]);
 
-  return (
-    <div
-      ref={containerRef}
-      className="h-full w-full flex justify-center items-center bg-black"
-    >
-      <div className="relative w-full h-full max-w-[calc(100vh*9/16)] aspect-[9/16] bg-black">
-        <iframe
-          src={`https://www.tiktok.com/embed/v3/${video.src.split('/').pop()}?autoplay=1`}
-          className="absolute top-0 left-0 w-full h-full border-0"
-          allowFullScreen
-          title="TikTok video"
-          sandbox="allow-popups allow-popups-to-escape-sandbox allow-scripts allow-top-navigation allow-same-origin"
-        />
-        {disableSocialButtons && (
-          <div
-            className="absolute top-0 left-0 w-full h-full bg-transparent z-10 cursor-not-allowed"
-            onClick={(e) => e.preventDefault()}
-          />
-        )}
+  if (!video.src || video.src.includes('tiktok.com')) {
+    return (
+      <div className="flex h-full w-full items-center justify-center bg-black">
+        <div className="text-red-500">Invalid TikTok Video ID. Please update video data source.</div>
       </div>
+    );
+  }
+
+  const iframeSrc = `https://www.tiktok.com/player/v1/${video.src}?loop=1&controls=1&autoplay=1&mute=1`;
+
+  return (
+    <div className="flex h-full w-full items-center justify-center bg-black">
+      {error ? (
+        <div className="text-red-500">{error}</div>
+      ) : (
+        <div className="relative aspect-[9/16] h-full w-full max-w-[calc(100vh*9/16)]">
+          {hasBeenActive && (
+            <iframe
+              ref={iframeRef}
+              src={iframeSrc}
+              className="h-full w-full"
+              allow="autoplay; encrypted-media;"
+              onError={() => setError('Failed to load TikTok video.')}
+            />
+          )}
+          <div className="absolute right-0 top-0 z-10 h-full w-16 bg-transparent" />
+        </div>
+      )}
     </div>
   );
-});
-
-TikTokPlayer.displayName = 'TikTokPlayer';
+}
