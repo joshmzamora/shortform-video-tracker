@@ -238,18 +238,18 @@ function SessionPage() {
           size="icon"
           onClick={handlePrevVideo}
           disabled={currentVideoIndex === 0}
-          className="rounded-full bg-white/80 text-black shadow-lg hover:bg-white"
+          className="h-12 w-12 rounded-full border border-white/20 bg-white/10 text-white shadow-lg backdrop-blur-md transition-transform duration-200 hover:scale-110 hover:bg-white/20 disabled:cursor-not-allowed disabled:opacity-40"
         >
-          <ChevronUp className="h-6 w-6" />
+          <ChevronUp className="h-7 w-7" />
         </Button>
         <Button
           variant="secondary"
           size="icon"
           onClick={handleNextVideo}
           disabled={currentVideoIndex >= videoList.length - 1}
-          className="rounded-full bg-white/80 text-black shadow-lg hover:bg-white"
+          className="h-12 w-12 rounded-full border border-white/20 bg-white/10 text-white shadow-lg backdrop-blur-md transition-transform duration-200 hover:scale-110 hover:bg-white/20 disabled:cursor-not-allowed disabled:opacity-40"
         >
-          <ChevronDown className="h-6 w-6" />
+          <ChevronDown className="h-7 w-7" />
         </Button>
       </div>
     </div>
