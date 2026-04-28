@@ -1,6 +1,6 @@
 # Google Sheets Webhook Setup
 
-This project now supports writing experiment data to Google Sheets through a Google Apps Script webhook instead of Appwrite.
+This project is now set up to use Google Sheets through a Google Apps Script endpoint for both experiment writes and admin reads.
 
 ## 1. Create the spreadsheet
 
@@ -69,6 +69,49 @@ function doPost(e) {
   }
 }
 
+function doGet(e) {
+  try {
+    const secret = e.parameter.secret;
+    const table = e.parameter.table;
+    const participantId = e.parameter.participantId;
+
+    if (secret !== SECRET) {
+      return jsonResponse({ success: false, message: 'Unauthorized' });
+    }
+
+    if (!table) {
+      return jsonResponse({ success: false, message: 'Missing table' });
+    }
+
+    const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(table);
+    if (!sheet) {
+      return jsonResponse({ success: false, message: `Sheet not found: ${table}` });
+    }
+
+    const values = sheet.getDataRange().getValues();
+    if (values.length <= 1) {
+      return jsonResponse({ success: true, data: [] });
+    }
+
+    const headers = values[0];
+    let rows = values.slice(1).map((row) => {
+      const entry = {};
+      headers.forEach((header, index) => {
+        entry[header] = row[index];
+      });
+      return entry;
+    });
+
+    if (participantId) {
+      rows = rows.filter((row) => String(row.participantId) === String(participantId));
+    }
+
+    return jsonResponse({ success: true, data: rows });
+  } catch (error) {
+    return jsonResponse({ success: false, message: String(error) });
+  }
+}
+
 function jsonResponse(payload) {
   return ContentService
     .createTextOutput(JSON.stringify(payload))
@@ -100,6 +143,10 @@ Restart `npm run dev` after updating `.env`.
 
 ## Notes
 
-- User-facing writes now go to Google Sheets through the webhook.
-- The current admin dashboard still reads from Appwrite and has not been migrated in this pass.
-- If you want the admin dashboard moved to Sheets too, that can be done next.
+- The app now expects Google Sheets to be the persistence layer for:
+  - consent writes
+  - questionnaire writes
+  - session writes
+  - admin reads
+- The app is production-ready from the code side, but it will not actually work until you deploy the Apps Script and add the two environment variables.
+- If the webhook env vars are missing, Sheets reads/writes will fail safely.

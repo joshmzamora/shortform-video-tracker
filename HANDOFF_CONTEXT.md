@@ -75,7 +75,7 @@ Notes:
 
 ## Google Sheets Migration Status
 
-This was started, then intentionally tabled by the user for later.
+The repo is now prepared for a full Google Sheets-backed setup, but the user has intentionally postponed actually turning it on.
 
 Files involved:
 - `src/lib/google-sheets-webhook.ts`
@@ -87,25 +87,23 @@ Files involved:
 
 What was done:
 - A lightweight Google Apps Script webhook path was added.
-- User-facing writes for consent/questionnaire/session were pointed at that webhook helper.
-- A setup doc was created with the Apps Script code and `.env` variables.
+- User-facing writes for consent/questionnaire/session were pointed at that helper.
+- Admin reads were migrated to Google Sheets reads through the same Apps Script endpoint.
+- A setup doc was created with both `doPost` and `doGet` Apps Script code and `.env` variables.
 - Participant ID generation was changed away from Appwrite count-based generation to a local generated ID.
+- Appwrite code and package usage were removed from the active service path.
 
 Why it was paused:
 - The user said they want to table the migration for now and revisit it later.
 
 Important caution:
-- The repo is currently in an in-between state regarding persistence.
-- The user-facing write path was switched toward the Google Sheets webhook, but the admin/reporting surfaces still assume Appwrite in places.
-- Before continuing the migration, verify whether the user wants:
-  - full Google Sheets migration
-  - temporary rollback to Appwrite
-  - or a dual-write transition period
+- This is now Google Sheets-first code, but it is not usable until the user deploys the Apps Script and fills in the environment variables.
+- Admin data depends on the Apps Script `doGet` endpoint returning rows from `consents`, `questionnaires`, and `sessions`.
+- The user said they are not turning it on yet, so treat the repo as “prepared but not activated.”
 
 Read these first before resuming that work:
 - `GOOGLE_SHEETS_SETUP.md`
 - `src/lib/google-sheets-webhook.ts`
-- `src/lib/appwrite.ts`
 - `src/app/admin/actions.ts`
 
 ## Files With Highest Signal
@@ -118,7 +116,6 @@ Read these first before resuming that work:
 - `src/app/consent/page.tsx`
 - `src/app/consent/actions.ts`
 - `src/lib/google-sheets-webhook.ts`
-- `src/lib/appwrite.ts`
 - `GOOGLE_SHEETS_SETUP.md`
 
 ## Recommended Next Steps
@@ -133,9 +130,9 @@ If continuing experiment UX work:
 3. Implement the end-of-experiment success popup / redirect / “view results” option if still wanted.
 
 If resuming persistence work:
-1. Decide whether Google Sheets is definitely replacing Appwrite.
-2. If yes, migrate the admin dashboard/report readers too.
-3. Remove remaining Appwrite dependencies only after read/write paths are both migrated.
+1. Deploy the Apps Script from `GOOGLE_SHEETS_SETUP.md`.
+2. Add `GOOGLE_APPS_SCRIPT_URL` and `GOOGLE_APPS_SCRIPT_SECRET` to `.env`.
+3. Verify consent/questionnaire/session writes and admin reads against the live sheet.
 
 ## Verification Status
 

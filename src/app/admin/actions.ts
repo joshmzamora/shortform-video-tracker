@@ -1,33 +1,69 @@
 'use server';
 
-import { appwriteService, Tables } from '@/lib/appwrite';
-import { Query } from 'node-appwrite';
+import { readFromGoogleSheets } from '@/lib/google-sheets-webhook';
+
+function parseBoolean(value: unknown) {
+  if (typeof value === 'boolean') return value;
+  if (typeof value === 'string') return value.toLowerCase() === 'true';
+  return false;
+}
+
+function parseNumber(value: unknown) {
+  if (typeof value === 'number') return value;
+  if (typeof value === 'string' && value.trim() !== '') {
+    const parsed = Number(value);
+    return Number.isNaN(parsed) ? undefined : parsed;
+  }
+  return undefined;
+}
+
+function parseJsonField<T>(value: unknown, fallback: T): T {
+  if (value === null || value === undefined || value === '') return fallback;
+  if (typeof value !== 'string') return value as T;
+
+  try {
+    return JSON.parse(value) as T;
+  } catch {
+    return fallback;
+  }
+}
 
 export async function getAdminData() {
-  // Fetch all data from Appwrite (or Memory Fallback)
-  const consents = await appwriteService.listDocuments(Tables.Consents);
-  const questionnaires = await appwriteService.listDocuments(Tables.Questionnaires);
-  const rawSessions = await appwriteService.listDocuments(Tables.Sessions);
+  const [consentsResult, questionnairesResult, sessionsResult] = await Promise.all([
+    readFromGoogleSheets('consents'),
+    readFromGoogleSheets('questionnaires'),
+    readFromGoogleSheets('sessions'),
+  ]);
 
-  // Normalize Sessions Data
-  // rawSessions could be:
-  // 1. Single Interaction Event { participantId, interactionType: 'view', ... }
-  // 2. Full Session Backup { participantId, type: 'full_session_backup', events: [...] }
+  const consents = consentsResult.success ? ((consentsResult.data || []) as any[]).map((row) => ({
+    ...row,
+    parentalConsentAgreed: parseBoolean(row.parentalConsentAgreed),
+    agreed: parseBoolean(row.agreed),
+    isHighSchoolStudent: parseBoolean(row.isHighSchoolStudent),
+    isAnonymous: parseBoolean(row.isAnonymous),
+  })) : [];
+
+  const questionnaires = questionnairesResult.success ? ((questionnairesResult.data || []) as any[]).map((row) => ({
+    ...row,
+    answers: parseJsonField(row.answers, {}),
+    screenTime: parseJsonField(row.screenTime, {}),
+    shortFormPercentage: parseNumber(row.shortFormPercentage) ?? 0,
+  })) : [];
+
+  const rawSessions = sessionsResult.success ? ((sessionsResult.data || []) as any[]).map((row) => ({
+    ...row,
+    watchTimeMs: parseNumber(row.watchTimeMs) ?? 0,
+    videoDurationMs: parseNumber(row.videoDurationMs),
+    events: parseJsonField(row.events, []),
+  })) : [];
 
   const sessionsMap = new Map<string, any[]>();
   const completedBackups: any[] = [];
 
   rawSessions.forEach((item: any) => {
     if (item.type === 'full_session_backup' && Array.isArray(item.events)) {
-      // Prioritize full backups if we want, or treat them as a "session"
-      // Let's add them to the list, but maybe we should deduplicate against streamed events?
-      // For simplicity, let's treat the backup as the source of truth if it exists.
-      // But we might have duplicates if we list both.
-      // Let's just push it for now.
       completedBackups.push(item.events);
     } else if (item.participantId) {
-      // It's a single interaction (or part of a stream)
-      // Group by participantId
       const pid = item.participantId;
       if (!sessionsMap.has(pid)) {
         sessionsMap.set(pid, []);
@@ -36,20 +72,11 @@ export async function getAdminData() {
     }
   });
 
-  // Convert map to array of sessions
   const streamedSessions = Array.from(sessionsMap.values());
-
-  // Merge Strategies:
-  // If we have a 'full_session_backup' for a participant, should we ignore their streamed events?
-  // Yes, because the backup is the final state.
-  // Let's filter out streamed sessions if a backup exists for that participant.
-
   const backupParticipantIds = new Set(completedBackups.map(s => s[0]?.participantId));
   const uniqueStreamedSessions = streamedSessions.filter(s => !backupParticipantIds.has(s[0]?.participantId));
-
   const allSessions = [...completedBackups, ...uniqueStreamedSessions];
 
-  // Sort events within each session by timestamp
   allSessions.forEach(session => {
     session.sort((a: any, b: any) => {
       const tA = new Date(a.timestamp || 0).getTime();
@@ -59,12 +86,16 @@ export async function getAdminData() {
   });
 
   return {
-    success: true,
+    success: consentsResult.success || questionnairesResult.success || sessionsResult.success,
     data: {
-      consents,
-      questionnaires,
+      consents: consents.sort((a: any, b: any) => new Date(b.timestamp || 0).getTime() - new Date(a.timestamp || 0).getTime()),
+      questionnaires: questionnaires.sort((a: any, b: any) => new Date(b.timestamp || 0).getTime() - new Date(a.timestamp || 0).getTime()),
       sessions: allSessions
-    }
+    },
+    message: [consentsResult, questionnairesResult, sessionsResult]
+      .filter((result) => !result.success && result.message)
+      .map((result) => result.message)
+      .join(' | '),
   };
 }
 
@@ -76,18 +107,26 @@ export async function clearAdminData() {
 export async function getConsent(participantId: string) {
   if (!participantId) return { success: false, message: "No ID provided" };
 
-  // Ideally we filter by participantId. 
-  // Since our appwrite service abstraction currently only has 'listDocuments' which returns everything (limit 1000),
-  // we can re-use it and filter in memory for now. 
-  // Optimization: Add a query param to appwriteService.listDocuments or add a specific get method.
-  // Given the scale (20 participants), fetching all is fine.
-
   try {
-    const consents = await appwriteService.listDocuments(Tables.Consents);
+    const result = await readFromGoogleSheets('consents', { participantId });
+    if (!result.success) {
+      return { success: false, message: result.message || "Consent not found" };
+    }
+
+    const consents = (result.data || []) as any[];
     const consent = consents.find((c: any) => c.participantId === participantId);
 
     if (consent) {
-      return { success: true, data: consent };
+      return {
+        success: true,
+        data: {
+          ...consent,
+          parentalConsentAgreed: parseBoolean(consent.parentalConsentAgreed),
+          agreed: parseBoolean(consent.agreed),
+          isHighSchoolStudent: parseBoolean(consent.isHighSchoolStudent),
+          isAnonymous: parseBoolean(consent.isAnonymous),
+        }
+      };
     }
     return { success: false, message: "Consent not found" };
   } catch (e) {
