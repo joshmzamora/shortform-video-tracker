@@ -77,6 +77,18 @@ function formatMinutes(totalMinutes: number) {
   return `${hours}h ${minutes}m`;
 }
 
+function downloadJson(filename: string, data: unknown) {
+  const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  const anchor = document.createElement('a');
+  anchor.href = url;
+  anchor.download = filename;
+  document.body.appendChild(anchor);
+  anchor.click();
+  document.body.removeChild(anchor);
+  URL.revokeObjectURL(url);
+}
+
 function QuestionnaireContent() {
   const { toast } = useToast();
   const searchParams = useSearchParams();
@@ -177,15 +189,7 @@ function QuestionnaireContent() {
 
     // 3. Download if Server Fail
     if (!serverSuccess) {
-      const blob = new Blob([JSON.stringify(dataToSave, null, 2)], { type: 'application/json' });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = `questionnaire-${participantId.trim()}.json`;
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-      URL.revokeObjectURL(url);
+      downloadJson(`questionnaire-${participantId.trim()}.json`, dataToSave);
     } else {
       toast({
         title: "Results Submitted",
@@ -216,6 +220,13 @@ function QuestionnaireContent() {
               </Button>
               <Button variant="outline" className="flex-1" onClick={() => setShowResults((prev) => !prev)}>
                 {showResults ? 'Hide Submitted Results' : 'View Submitted Results'}
+              </Button>
+              <Button
+                variant="outline"
+                className="flex-1"
+                onClick={() => questionnaire && downloadJson(`questionnaire-results-${questionnaire.participantId}.json`, questionnaire)}
+              >
+                Download Results
               </Button>
             </div>
 

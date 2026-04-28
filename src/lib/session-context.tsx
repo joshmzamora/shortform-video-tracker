@@ -31,6 +31,10 @@ interface SessionData {
   videoId: string;
   interactionType: 'view' | 'like' | 'skip' | 'comment' | 'share';
   watchTimeMs: number;
+  watchTimeSeconds?: number;
+  videoDurationMs?: number;
+  videoOrder?: number;
+  videoCaption?: string;
   participantId: string;
   genre: string;
   timestamp: string;

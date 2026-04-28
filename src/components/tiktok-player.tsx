@@ -93,7 +93,9 @@ export function TikTokPlayer({ video, isActive, onInteraction, shouldMount = fal
             sendPlayerCommand('mute');
             sendPlayerCommand('seek', 0);
           } else {
+            sendPlayerCommand('seek', 0);
             sendPlayerCommand('unmute');
+            sendPlayerCommand('play');
           }
           break;
         case 'onStateChange':
@@ -139,6 +141,7 @@ export function TikTokPlayer({ video, isActive, onInteraction, shouldMount = fal
     if (!isPlayerReady) return;
 
     if (isActive) {
+      sendPlayerCommand('seek', 0);
       sendPlayerCommand('play');
       sendPlayerCommand('unmute');
     } else {
@@ -195,7 +198,7 @@ export function TikTokPlayer({ video, isActive, onInteraction, shouldMount = fal
     );
   }
 
-  const iframeSrc = `https://www.tiktok.com/player/v1/${videoId}?loop=1&controls=1&autoplay=1&mute=1`;
+  const iframeSrc = `https://www.tiktok.com/player/v1/${videoId}?loop=1&controls=1&autoplay=1&mute=0`;
 
   return (
     <div className="flex h-full w-full items-center justify-center bg-black">

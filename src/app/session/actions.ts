@@ -97,13 +97,7 @@ export async function saveInteraction(sessionId: string, data: SessionData) {
 
   try {
     const documentData = {
-      participantId: data.participantId,
-      videoId: data.videoId,
-      interactionType: data.interactionType,
-      watchTimeMs: data.watchTimeMs,
-      videoDurationMs: data.videoDurationMs,
-      genre: data.genre,
-      timestamp: data.timestamp,
+      ...data,
       sessionId,
     };
 

@@ -23,14 +23,40 @@ function extractTikTokVideoId(src: string) {
 export type SessionData = {
   videoId: string;
   watchTimeMs: number;
+  watchTimeSeconds: number;
   videoDurationMs?: number;
   interactionType: 'view';
+  videoOrder: number;
+  videoCaption: string;
   participantId: string;
   genre: string;
   timestamp: string;
 };
 
 type SessionState = 'initializing' | 'running' | 'completed' | 'invalidated' | 'error';
+
+const GENRE_ORDER = ['Doomscroll', 'Educational', 'Entertainment', 'Inspirational', 'Relatable'];
+
+function formatMilliseconds(milliseconds: number) {
+  const totalSeconds = Math.max(0, Math.round(milliseconds / 1000));
+  const minutes = Math.floor(totalSeconds / 60);
+  const seconds = totalSeconds % 60;
+
+  if (minutes === 0) return `${seconds}s`;
+  return `${minutes}m ${String(seconds).padStart(2, '0')}s`;
+}
+
+function downloadJson(filename: string, data: unknown) {
+  const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  const anchor = document.createElement('a');
+  anchor.href = url;
+  anchor.download = filename;
+  document.body.appendChild(anchor);
+  anchor.click();
+  document.body.removeChild(anchor);
+  URL.revokeObjectURL(url);
+}
 
 function SessionPage() {
   const router = useRouter();
@@ -49,6 +75,25 @@ function SessionPage() {
   const completionHandledRef = useRef(false);
 
   const participantId = contextParticipantId || searchParams.get('participantId');
+  const sessionEventsByVideo = sessionEvents.reduce<Map<string, SessionData[]>>((map, event) => {
+    const existing = map.get(event.videoId) ?? [];
+    existing.push(event as SessionData);
+    map.set(event.videoId, existing);
+    return map;
+  }, new Map());
+
+  const genreSummary = GENRE_ORDER.map((genre) => {
+    const eventsForGenre = sessionEvents.filter((event) => event.genre === genre) as SessionData[];
+    const totalWatchTimeMs = eventsForGenre.reduce((sum, event) => sum + event.watchTimeMs, 0);
+    const totalVideos = new Set(eventsForGenre.map((event) => event.videoId)).size;
+
+    return {
+      genre,
+      totalVideos,
+      totalWatchTimeMs,
+      averageWatchTimeMs: totalVideos > 0 ? Math.round(totalWatchTimeMs / totalVideos) : 0,
+    };
+  }).sort((a, b) => b.totalWatchTimeMs - a.totalWatchTimeMs);
 
   useEffect(() => {
     const initSession = async () => {
@@ -130,6 +175,9 @@ function SessionPage() {
     const newRecord: SessionData = {
       ...interaction,
       interactionType: 'view',
+      watchTimeSeconds: Math.round(interaction.watchTimeMs / 1000),
+      videoOrder: videoList.findIndex((entry) => entry.id === interaction.videoId) + 1,
+      videoCaption: video.caption,
       participantId,
       genre: video.genre,
       timestamp: new Date().toISOString(),
@@ -264,6 +312,18 @@ function SessionPage() {
             <Button variant="outline" className="flex-1" onClick={() => setShowResults((prev) => !prev)}>
               {showResults ? 'Hide Results' : 'View Your Results'}
             </Button>
+            <Button
+              variant="outline"
+              className="flex-1"
+              onClick={() => downloadJson(`experiment-results-${participantId}.json`, {
+                participantId,
+                totalEvents: sessionEvents.length,
+                genreSummary,
+                sessionEvents,
+              })}
+            >
+              Download Results
+            </Button>
           </div>
 
           {showResults && (
@@ -273,8 +333,38 @@ function SessionPage() {
                 <p><strong className="text-foreground">Participant ID:</strong> {participantId}</p>
                 <p><strong className="text-foreground">Recorded events:</strong> {sessionEvents.length}</p>
               </div>
+              <div className="mt-6 overflow-x-auto rounded-md border bg-background">
+                <table className="w-full text-sm">
+                  <thead className="bg-muted/60 text-left">
+                    <tr>
+                      <th className="px-3 py-2 font-semibold">Genre</th>
+                      <th className="px-3 py-2 font-semibold">Videos Viewed</th>
+                      <th className="px-3 py-2 font-semibold">Total Dwell Time</th>
+                      <th className="px-3 py-2 font-semibold">Average per Video</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {genreSummary.map((row) => (
+                      <tr key={row.genre} className="border-t">
+                        <td className="px-3 py-2">{row.genre}</td>
+                        <td className="px-3 py-2">{row.totalVideos}</td>
+                        <td className="px-3 py-2">{formatMilliseconds(row.totalWatchTimeMs)}</td>
+                        <td className="px-3 py-2">{formatMilliseconds(row.averageWatchTimeMs)}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
               <div className="mt-4 max-h-80 overflow-auto rounded-md bg-background p-3">
-                <pre className="text-xs whitespace-pre-wrap break-words">{JSON.stringify(sessionEvents, null, 2)}</pre>
+                <pre className="text-xs whitespace-pre-wrap break-words">{JSON.stringify(
+                  sessionEvents.map((event) => ({
+                    ...event,
+                    watchTimeLabel: formatMilliseconds(event.watchTimeMs),
+                    visitsForVideo: sessionEventsByVideo.get(event.videoId)?.length ?? 1,
+                  })),
+                  null,
+                  2
+                )}</pre>
               </div>
             </div>
           )}
