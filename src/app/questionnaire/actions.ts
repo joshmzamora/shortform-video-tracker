@@ -1,6 +1,6 @@
 "use server";
 
-import { appwriteService, Tables } from '@/lib/appwrite';
+import { postToGoogleSheets } from '@/lib/google-sheets-webhook';
 
 export type QuestionnaireData = {
   participantId: string;
@@ -22,8 +22,15 @@ export async function saveQuestionnaireData(data: QuestionnaireData) {
   }
 
   try {
-    const success = await appwriteService.saveDocument(Tables.Questionnaires, data);
-    if (!success) throw new Error("Appwrite save failed (using fallback)");
+    const success = await postToGoogleSheets({
+      table: 'questionnaires',
+      data: {
+        ...data,
+        answers: JSON.stringify(data.answers),
+        screenTime: JSON.stringify(data.screenTime),
+      },
+    });
+    if (!success) throw new Error("Google Sheets webhook save failed");
 
     return { success: true, message: "Questionnaire data saved successfully." };
   } catch (error) {

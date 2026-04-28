@@ -1,6 +1,6 @@
 "use server";
 
-import { appwriteService, Tables } from '@/lib/appwrite';
+import { generateParticipantId, postToGoogleSheets } from '@/lib/google-sheets-webhook';
 
 export type ConsentData = {
   participantId: string;
@@ -20,8 +20,11 @@ export async function saveConsentData(data: ConsentData) {
   }
 
   try {
-    const success = await appwriteService.saveDocument(Tables.Consents, data);
-    if (!success) throw new Error("Appwrite save failed (using fallback)");
+    const success = await postToGoogleSheets({
+      table: 'consents',
+      data,
+    });
+    if (!success) throw new Error("Google Sheets webhook save failed");
 
     return { success: true, message: "Consent data saved successfully." };
   } catch (error) {
@@ -32,10 +35,9 @@ export async function saveConsentData(data: ConsentData) {
 }
 
 export async function getConsentsCount() {
-  try {
-    const consents = await appwriteService.listDocuments(Tables.Consents);
-    return consents.length;
-  } catch (error) {
-    return 0;
-  }
+  return 0;
+}
+
+export async function createParticipantId() {
+  return generateParticipantId();
 }

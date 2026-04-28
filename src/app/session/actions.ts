@@ -1,6 +1,6 @@
 "use server";
 
-import { appwriteService, Tables } from '@/lib/appwrite';
+import { postToGoogleSheets } from '@/lib/google-sheets-webhook';
 import fs from 'fs-extra';
 import path from 'path';
 import { Video, formatCaption } from '@/lib/videos';
@@ -74,11 +74,14 @@ export async function saveSessionData(data: SessionData[]) {
       participantId: data[0]?.participantId,
       type: 'full_session_backup',
       timestamp: new Date().toISOString(),
-      events: data,
+      events: JSON.stringify(data),
     };
 
-    const success = await appwriteService.saveDocument(Tables.Sessions, backupData);
-    if (!success) throw new Error("Appwrite save failed");
+    const success = await postToGoogleSheets({
+      table: 'sessions',
+      data: backupData,
+    });
+    if (!success) throw new Error("Google Sheets webhook save failed");
 
     return { success: true, message: "Data saved successfully." };
   } catch (error) {
@@ -104,8 +107,11 @@ export async function saveInteraction(sessionId: string, data: SessionData) {
       sessionId,
     };
 
-    const success = await appwriteService.saveDocument(Tables.Sessions, documentData);
-    if (!success) throw new Error("Appwrite save failed");
+    const success = await postToGoogleSheets({
+      table: 'sessions',
+      data: documentData,
+    });
+    if (!success) throw new Error("Google Sheets webhook save failed");
 
     return { success: true, message: "Interaction saved." };
   } catch (error) {

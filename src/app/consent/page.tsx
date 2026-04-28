@@ -10,7 +10,7 @@ import { Label } from '@/components/ui/label';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Separator } from '@/components/ui/separator';
 import { Loader2 } from 'lucide-react';
-import { saveConsentData, getConsentsCount } from './actions';
+import { saveConsentData, createParticipantId } from './actions';
 import { useSession } from '@/lib/session-context';
 import { useToast } from '@/hooks/use-toast';
 import {
@@ -42,8 +42,7 @@ export default function ConsentPage() {
     if (agreed && parentalConsentAgreed && (isAnonymous || participantName.trim()) && isHighSchoolStudent && !isLoading) {
       setIsLoading(true);
 
-      const consentsCount = await getConsentsCount();
-      const newParticipantId = `user${(consentsCount + 1).toString().padStart(4, '0')}`;
+      const newParticipantId = await createParticipantId();
       setParticipantId(newParticipantId);
 
       const consentData = {
