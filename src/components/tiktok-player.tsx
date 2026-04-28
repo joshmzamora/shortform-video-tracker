@@ -50,6 +50,9 @@ export function TikTokPlayer({ video, isActive, onInteraction, shouldMount = fal
     setError(null);
     setIsPlayerReady(false);
     reportedUnavailableRef.current = false;
+    watchTimeStartRef.current = null;
+    accumulatedWatchTimeRef.current = 0;
+    videoDurationRef.current = null;
   }, [video.id, video.src]);
 
   const reportUnavailable = (reason: string) => {
@@ -112,6 +115,9 @@ export function TikTokPlayer({ video, isActive, onInteraction, shouldMount = fal
         case 'onPlayerError': {
           const errorType = data.value?.errorType;
           const errorCode = data.value?.errorCode;
+          if (errorType === 'AUTOPLAY_ERROR') {
+            break;
+          }
           reportUnavailable(`${errorType ?? 'PLAYER_ERROR'}:${errorCode ?? 'unknown'}`);
           break;
         }
@@ -123,11 +129,11 @@ export function TikTokPlayer({ video, isActive, onInteraction, shouldMount = fal
   }, []);
 
   useEffect(() => {
-    if (!shouldRenderIframe || isPlayerReady || error) return;
+    if (!shouldRenderIframe || !isActive || isPlayerReady || error) return;
 
     readyTimeoutRef.current = setTimeout(() => {
       reportUnavailable('PLAYER_READY_TIMEOUT');
-    }, 7000);
+    }, 12000);
 
     return () => {
       if (readyTimeoutRef.current) {
@@ -135,7 +141,7 @@ export function TikTokPlayer({ video, isActive, onInteraction, shouldMount = fal
         readyTimeoutRef.current = null;
       }
     };
-  }, [error, isPlayerReady, shouldRenderIframe]);
+  }, [error, isActive, isPlayerReady, shouldRenderIframe]);
 
   useEffect(() => {
     if (!isPlayerReady) return;

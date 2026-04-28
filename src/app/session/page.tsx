@@ -82,6 +82,8 @@ function SessionPage() {
   const [showResearcherPanel, setShowResearcherPanel] = useState(false);
   const invalidationHandledRef = useRef(false);
   const completionHandledRef = useRef(false);
+  const navigationLockRef = useRef(false);
+  const pressedKeysRef = useRef<Set<string>>(new Set());
 
   const participantId = contextParticipantId || searchParams.get('participantId');
   const researcherMode = searchParams.get('researcherMode') === '1';
@@ -184,6 +186,12 @@ function SessionPage() {
     };
   }, [videoList]);
 
+  const unlockNavigationSoon = useCallback(() => {
+    window.setTimeout(() => {
+      navigationLockRef.current = false;
+    }, 450);
+  }, []);
+
   const handleInteraction = useCallback((interaction: TikTokInteraction) => {
     const video = videoList.find((entry) => entry.id === interaction.videoId);
     if (!video || !participantId || !sessionId) return;
@@ -204,8 +212,11 @@ function SessionPage() {
   }, [addSessionEvent, participantId, sessionId, videoList]);
 
   const handlePrevVideo = () => {
+    if (navigationLockRef.current) return;
     if (currentVideoIndex > 0) {
+      navigationLockRef.current = true;
       setCurrentVideoIndex(currentVideoIndex - 1);
+      unlockNavigationSoon();
     }
   };
 
@@ -228,16 +239,19 @@ function SessionPage() {
   const advanceToNextAvailable = useCallback((startIndex: number) => {
     for (let index = startIndex + 1; index < videoList.length; index += 1) {
       if (!unavailableVideoIds.includes(videoList[index].id)) {
+        navigationLockRef.current = true;
         setCurrentVideoIndex(index);
+        unlockNavigationSoon();
         return true;
       }
     }
 
     completeSession();
     return false;
-  }, [completeSession, unavailableVideoIds, videoList]);
+  }, [completeSession, unavailableVideoIds, unlockNavigationSoon, videoList]);
 
   const handleNextVideo = useCallback(() => {
+    if (navigationLockRef.current) return;
     advanceToNextAvailable(currentVideoIndex);
   }, [advanceToNextAvailable, currentVideoIndex]);
 
@@ -293,19 +307,35 @@ function SessionPage() {
     if (sessionState !== 'running' || !hasStarted) return;
 
     const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.repeat || pressedKeysRef.current.has(event.key)) {
+        event.preventDefault();
+        return;
+      }
+
       if (event.key === 'ArrowDown') {
         event.preventDefault();
+        pressedKeysRef.current.add(event.key);
         handleNextVideo();
       }
 
       if (event.key === 'ArrowUp') {
         event.preventDefault();
+        pressedKeysRef.current.add(event.key);
         handlePrevVideo();
       }
     };
 
+    const handleKeyUp = (event: KeyboardEvent) => {
+      pressedKeysRef.current.delete(event.key);
+    };
+
     window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
+    window.addEventListener('keyup', handleKeyUp);
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown);
+      window.removeEventListener('keyup', handleKeyUp);
+      pressedKeysRef.current.clear();
+    };
   }, [handleNextVideo, hasStarted, sessionState]);
 
   if (sessionState === 'initializing') {
