@@ -59,11 +59,11 @@ export function TikTokPlayer({ video, isActive, onInteraction, shouldMount = fal
     onUnavailable?.(video.id, reason);
   };
 
-  const sendPlayerCommand = (command: string, value?: number) => {
+  const sendPlayerCommand = (command: 'play' | 'pause' | 'mute' | 'unMute' | 'seekTo', value?: number) => {
     if (!iframeRef.current?.contentWindow) return;
 
     iframeRef.current.contentWindow.postMessage(
-      { 'x-tiktok-player-command': command, ...(value !== undefined ? { value } : {}) },
+      { type: command, value, 'x-tiktok-player': true },
       '*'
     );
   };
@@ -91,10 +91,10 @@ export function TikTokPlayer({ video, isActive, onInteraction, shouldMount = fal
           if (!isActiveRef.current) {
             sendPlayerCommand('pause');
             sendPlayerCommand('mute');
-            sendPlayerCommand('seek', 0);
+            sendPlayerCommand('seekTo', 0);
           } else {
-            sendPlayerCommand('seek', 0);
-            sendPlayerCommand('unmute');
+            sendPlayerCommand('seekTo', 0);
+            sendPlayerCommand('unMute');
             sendPlayerCommand('play');
           }
           break;
@@ -141,13 +141,13 @@ export function TikTokPlayer({ video, isActive, onInteraction, shouldMount = fal
     if (!isPlayerReady) return;
 
     if (isActive) {
-      sendPlayerCommand('seek', 0);
+      sendPlayerCommand('seekTo', 0);
       sendPlayerCommand('play');
-      sendPlayerCommand('unmute');
+      sendPlayerCommand('unMute');
     } else {
       sendPlayerCommand('pause');
       sendPlayerCommand('mute');
-      sendPlayerCommand('seek', 0);
+      sendPlayerCommand('seekTo', 0);
     }
   }, [isActive, isPlayerReady]);
 
@@ -198,7 +198,7 @@ export function TikTokPlayer({ video, isActive, onInteraction, shouldMount = fal
     );
   }
 
-  const iframeSrc = `https://www.tiktok.com/player/v1/${videoId}?loop=1&controls=1&autoplay=1&mute=0`;
+  const iframeSrc = `https://www.tiktok.com/player/v1/${videoId}?loop=1&controls=1&autoplay=1&muted=0`;
 
   return (
     <div className="flex h-full w-full items-center justify-center bg-black">
@@ -216,7 +216,7 @@ export function TikTokPlayer({ video, isActive, onInteraction, shouldMount = fal
               ref={iframeRef}
               src={iframeSrc}
               className="h-full w-full"
-              allow="autoplay; encrypted-media;"
+              allow="autoplay; fullscreen; encrypted-media; picture-in-picture"
               onError={() => reportUnavailable('IFRAME_LOAD_ERROR')}
             />
           )}

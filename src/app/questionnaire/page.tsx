@@ -111,7 +111,7 @@ function QuestionnaireContent() {
   });
   const [shortFormPercentage, setShortFormPercentage] = useState([50]);
   const [screenshot, setScreenshot] = useState<string | null>(null);
-  const [submissionState, setSubmissionState] = useState<'idle' | 'submitting' | 'submitted'>('idle');
+  const [submissionState, setSubmissionState] = useState<'idle' | 'submitting' | 'confirming' | 'submitted'>('idle');
   const [showResults, setShowResults] = useState(false);
 
   const totalScreenTimeMinutes = Object.values(screenTime).reduce((sum, value) => sum + parseDurationToMinutes(value), 0);
@@ -191,14 +191,20 @@ function QuestionnaireContent() {
     if (!serverSuccess) {
       downloadJson(`questionnaire-${participantId.trim()}.json`, dataToSave);
     } else {
-      toast({
-        title: "Results Submitted",
-          description: "Joshua Zamora has finished conducting AP Research, but thank you for submitting and testing this out.",
-        });
-      }
+    }
 
-    setSubmissionState('submitted');
+    setSubmissionState('confirming');
   };
+
+  useEffect(() => {
+    if (submissionState !== 'confirming') return;
+
+    const timeout = window.setTimeout(() => {
+      setSubmissionState('submitted');
+    }, 900);
+
+    return () => window.clearTimeout(timeout);
+  }, [submissionState]);
 
   if (submissionState === 'submitted') {
     return (
@@ -386,14 +392,23 @@ function QuestionnaireContent() {
           </div>
         </CardContent>
         <CardFooter>
-          <Button className="w-full" onClick={handleSubmit} disabled={!canSubmit || submissionState === 'submitting'}>
-            {submissionState === 'submitting' ? (
+          <div className="w-full space-y-3">
+            {submissionState === 'confirming' && (
+              <div className="rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-800">
+                Submitted successfully. Preparing your confirmation screen...
+              </div>
+            )}
+            <Button className="w-full" onClick={handleSubmit} disabled={!canSubmit || submissionState === 'submitting' || submissionState === 'confirming'}>
+              {submissionState === 'submitting' ? (
               <>
                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                 Submitting...
               </>
-            ) : "Submit Responses"}
-          </Button>
+              ) : submissionState === 'confirming' ? (
+                "Submitted"
+              ) : "Submit Responses"}
+            </Button>
+          </div>
         </CardFooter>
       </Card>
     </main>

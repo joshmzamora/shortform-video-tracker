@@ -46,6 +46,13 @@ function formatMilliseconds(milliseconds: number) {
   return `${minutes}m ${String(seconds).padStart(2, '0')}s`;
 }
 
+function formatClockDuration(milliseconds: number) {
+  const totalSeconds = Math.max(0, Math.round(milliseconds / 1000));
+  const minutes = Math.floor(totalSeconds / 60);
+  const seconds = totalSeconds % 60;
+  return `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
+}
+
 function downloadJson(filename: string, data: unknown) {
   const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
   const url = URL.createObjectURL(blob);
@@ -71,10 +78,13 @@ function SessionPage() {
   const [unavailableVideoIds, setUnavailableVideoIds] = useState<string[]>([]);
   const [invalidationReason, setInvalidationReason] = useState('');
   const [showResults, setShowResults] = useState(false);
+  const [hasStarted, setHasStarted] = useState(false);
+  const [showResearcherPanel, setShowResearcherPanel] = useState(false);
   const invalidationHandledRef = useRef(false);
   const completionHandledRef = useRef(false);
 
   const participantId = contextParticipantId || searchParams.get('participantId');
+  const researcherMode = searchParams.get('researcherMode') === '1';
   const sessionEventsByVideo = sessionEvents.reduce<Map<string, SessionData[]>>((map, event) => {
     const existing = map.get(event.videoId) ?? [];
     existing.push(event as SessionData);
@@ -94,6 +104,12 @@ function SessionPage() {
       averageWatchTimeMs: totalVideos > 0 ? Math.round(totalWatchTimeMs / totalVideos) : 0,
     };
   }).sort((a, b) => b.totalWatchTimeMs - a.totalWatchTimeMs);
+  const topGenre = genreSummary[0]?.totalWatchTimeMs ? genreSummary[0] : null;
+  const viewedVideoIds = new Set(sessionEvents.map((event) => event.videoId));
+  const availableVideoCount = Math.max(0, videoList.length - unavailableVideoIds.length);
+  const totalWatchTimeMs = sessionEvents.reduce((sum, event) => sum + event.watchTimeMs, 0);
+  const totalVideosViewed = viewedVideoIds.size;
+  const totalVideosSkipped = Math.max(0, availableVideoCount - totalVideosViewed);
 
   useEffect(() => {
     const initSession = async () => {
@@ -156,7 +172,7 @@ function SessionPage() {
     videoList.slice(0, PRELOAD_VIDEO_COUNT).forEach((video) => {
       const videoId = extractTikTokVideoId(video.src);
       if (!videoId) return;
-      registerLink('prefetch', `https://www.tiktok.com/player/v1/${videoId}?loop=1&controls=1&autoplay=1&mute=1`, 'document');
+      registerLink('prefetch', `https://www.tiktok.com/player/v1/${videoId}?loop=1&controls=1&autoplay=1&muted=1`, 'document');
     });
 
     return () => {
@@ -204,6 +220,7 @@ function SessionPage() {
   const completeSession = useCallback(() => {
     if (completionHandledRef.current || invalidationHandledRef.current) return;
     completionHandledRef.current = true;
+    setHasStarted(false);
     setShowResults(false);
     setSessionState('completed');
   }, []);
@@ -245,7 +262,7 @@ function SessionPage() {
   }, [advanceToNextAvailable, currentVideoIndex, toast, videoList]);
 
   useEffect(() => {
-    if (sessionState !== 'running') return;
+    if (sessionState !== 'running' || !hasStarted || researcherMode) return;
 
     const handleVisibilityChange = () => {
       if (document.visibilityState === 'hidden') {
@@ -270,7 +287,26 @@ function SessionPage() {
       window.removeEventListener('blur', handleBlur);
       window.removeEventListener('pagehide', handlePageHide);
     };
-  }, [invalidateSession, sessionState]);
+  }, [hasStarted, invalidateSession, researcherMode, sessionState]);
+
+  useEffect(() => {
+    if (sessionState !== 'running' || !hasStarted) return;
+
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'ArrowDown') {
+        event.preventDefault();
+        handleNextVideo();
+      }
+
+      if (event.key === 'ArrowUp') {
+        event.preventDefault();
+        handlePrevVideo();
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [handleNextVideo, hasStarted, sessionState]);
 
   if (sessionState === 'initializing') {
     return (
@@ -301,7 +337,7 @@ function SessionPage() {
             <PartyPopper className="mx-auto h-12 w-12 text-primary" />
             <h1 className="mt-4 text-2xl font-bold">Results Submitted</h1>
             <p className="mt-3 text-muted-foreground">
-              Joshua Zamora has finished conducting AP Research, but thank you for completing the experiment and testing this out.
+              Thanks for completing this test. Joshua Zamora has already finished AP Research, but your submission still helps a lot.
             </p>
           </div>
 
@@ -317,6 +353,11 @@ function SessionPage() {
               className="flex-1"
               onClick={() => downloadJson(`experiment-results-${participantId}.json`, {
                 participantId,
+                totalSessionTimeMs: totalWatchTimeMs,
+                totalVideosViewed,
+                totalVideosSkipped,
+                unavailableVideoCount: unavailableVideoIds.length,
+                topGenre,
                 totalEvents: sessionEvents.length,
                 genreSummary,
                 sessionEvents,
@@ -329,9 +370,33 @@ function SessionPage() {
           {showResults && (
             <div className="mt-6 rounded-lg border bg-muted/40 p-4 text-left">
               <h2 className="font-semibold text-foreground">Experiment Interaction Log</h2>
-              <div className="mt-3 space-y-2 text-sm text-muted-foreground">
-                <p><strong className="text-foreground">Participant ID:</strong> {participantId}</p>
-                <p><strong className="text-foreground">Recorded events:</strong> {sessionEvents.length}</p>
+              <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+                <div className="rounded-lg border bg-background p-3">
+                  <p className="text-xs uppercase tracking-wide text-muted-foreground">Total Session Time</p>
+                  <p className="mt-1 text-lg font-semibold text-foreground">{formatClockDuration(totalWatchTimeMs)}</p>
+                </div>
+                <div className="rounded-lg border bg-background p-3">
+                  <p className="text-xs uppercase tracking-wide text-muted-foreground">Videos Viewed</p>
+                  <p className="mt-1 text-lg font-semibold text-foreground">{totalVideosViewed}</p>
+                </div>
+                <div className="rounded-lg border bg-background p-3">
+                  <p className="text-xs uppercase tracking-wide text-muted-foreground">Skipped / Not Reached</p>
+                  <p className="mt-1 text-lg font-semibold text-foreground">{totalVideosSkipped}</p>
+                </div>
+                <div className="rounded-lg border bg-background p-3">
+                  <p className="text-xs uppercase tracking-wide text-muted-foreground">Unavailable</p>
+                  <p className="mt-1 text-lg font-semibold text-foreground">{unavailableVideoIds.length}</p>
+                </div>
+              </div>
+              <div className="mt-4 rounded-lg border bg-background p-4">
+                <p className="text-xs uppercase tracking-wide text-muted-foreground">Top Genre by Dwell Time</p>
+                <p className="mt-1 text-lg font-semibold text-foreground">
+                  {topGenre ? `${topGenre.genre} (${formatMilliseconds(topGenre.totalWatchTimeMs)})` : 'No viewing data recorded'}
+                </p>
+                <div className="mt-2 space-y-1 text-sm text-muted-foreground">
+                  <p><strong className="text-foreground">Participant ID:</strong> {participantId}</p>
+                  <p><strong className="text-foreground">Recorded events:</strong> {sessionEvents.length}</p>
+                </div>
               </div>
               <div className="mt-6 overflow-x-auto rounded-md border bg-background">
                 <table className="w-full text-sm">
@@ -345,7 +410,10 @@ function SessionPage() {
                   </thead>
                   <tbody>
                     {genreSummary.map((row) => (
-                      <tr key={row.genre} className="border-t">
+                      <tr
+                        key={row.genre}
+                        className={`border-t ${topGenre?.genre === row.genre ? 'bg-primary/5' : ''}`}
+                      >
                         <td className="px-3 py-2">{row.genre}</td>
                         <td className="px-3 py-2">{row.totalVideos}</td>
                         <td className="px-3 py-2">{formatMilliseconds(row.totalWatchTimeMs)}</td>
@@ -392,11 +460,13 @@ function SessionPage() {
 
   return (
     <div className="relative h-screen w-screen overflow-hidden bg-black">
-      <SessionTimer
-        duration={SESSION_DURATION_SECONDS}
-        onComplete={completeSession}
-        className="absolute left-4 top-4 z-20"
-      />
+      {hasStarted && (
+        <SessionTimer
+          duration={SESSION_DURATION_SECONDS}
+          onComplete={completeSession}
+          className="absolute left-4 top-4 z-20"
+        />
+      )}
       <div
         className="h-full w-full transition-transform duration-500 ease-in-out"
         style={{ transform: `translateY(-${currentVideoIndex * 100}vh)` }}
@@ -405,7 +475,7 @@ function SessionPage() {
           <div key={video.id} className="flex h-screen w-screen items-center justify-center">
             <TikTokPlayer
               video={video}
-              isActive={index === currentVideoIndex}
+              isActive={hasStarted && index === currentVideoIndex}
               onInteraction={handleInteraction}
               shouldMount={index <= currentVideoIndex + PREMOUNT_VIDEO_COUNT}
               onUnavailable={handleVideoUnavailable}
@@ -414,12 +484,37 @@ function SessionPage() {
         ))}
       </div>
 
+      {!hasStarted && (
+        <div className="absolute inset-0 z-30 flex items-center justify-center bg-black/70 p-4 backdrop-blur-sm">
+          <div className="w-full max-w-lg rounded-xl border border-white/15 bg-black/80 p-6 text-white shadow-2xl">
+            <h1 className="text-2xl font-semibold">Begin Experiment</h1>
+            <p className="mt-3 text-sm text-white/80">
+              When you start, the first video will begin right away with sound if your browser allows it.
+            </p>
+            <div className="mt-4 rounded-lg border border-white/15 bg-white/5 p-4 text-sm text-white/85">
+              <p className="font-medium text-white">Before you begin</p>
+              <p className="mt-2">Use headphones or make sure your volume is on.</p>
+              <p className="mt-2">Stay on this tab and do not switch apps or windows during the experiment.</p>
+              <p className="mt-2">Use the side buttons or your keyboard up and down arrows to move between videos.</p>
+            </div>
+            <div className="mt-5 flex flex-col gap-3 sm:flex-row">
+              <Button className="flex-1" onClick={() => setHasStarted(true)}>
+                Begin Experiment
+              </Button>
+              <Button variant="outline" className="flex-1 border-white/20 bg-transparent text-white hover:bg-white/10 hover:text-white" onClick={() => router.push('/')}>
+                Return Home
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
+
       <div className="absolute right-4 top-1/2 z-10 flex -translate-y-1/2 flex-col space-y-2">
         <Button
           variant="secondary"
           size="icon"
           onClick={handlePrevVideo}
-          disabled={currentVideoIndex === 0}
+          disabled={!hasStarted || currentVideoIndex === 0}
           className="h-12 w-12 rounded-full border border-white/20 bg-white/10 text-white shadow-lg backdrop-blur-md transition-transform duration-200 hover:scale-110 hover:bg-white/20 disabled:cursor-not-allowed disabled:opacity-40"
         >
           <ChevronUp className="h-7 w-7" />
@@ -428,11 +523,67 @@ function SessionPage() {
           variant="secondary"
           size="icon"
           onClick={handleNextVideo}
+          disabled={!hasStarted}
           className="h-12 w-12 rounded-full border border-white/20 bg-white/10 text-white shadow-lg backdrop-blur-md transition-transform duration-200 hover:scale-110 hover:bg-white/20"
         >
           <ChevronDown className="h-7 w-7" />
         </Button>
       </div>
+
+      {hasStarted && (
+        <div className="absolute bottom-4 left-4 z-20 rounded-full border border-white/15 bg-black/50 px-3 py-2 text-xs text-white/80 backdrop-blur-md">
+          Use the side arrows or keyboard up/down keys to move through the feed.
+        </div>
+      )}
+
+      {researcherMode && sessionState === 'running' && (
+        <div className="absolute bottom-4 left-4 z-30 max-w-sm rounded-xl border border-amber-300/30 bg-black/75 p-3 text-white shadow-xl backdrop-blur-md">
+          <div className="flex items-center justify-between gap-3">
+            <div>
+              <p className="text-xs uppercase tracking-wide text-amber-200">Researcher Mode</p>
+              <p className="text-xs text-white/70">Invalidation is bypassed for testing.</p>
+            </div>
+            <Button
+              variant="outline"
+              size="sm"
+              className="border-white/20 bg-transparent text-white hover:bg-white/10 hover:text-white"
+              onClick={() => setShowResearcherPanel((prev) => !prev)}
+            >
+              {showResearcherPanel ? 'Hide' : 'Show'}
+            </Button>
+          </div>
+
+          {showResearcherPanel && (
+            <div className="mt-3 space-y-3 text-xs text-white/80">
+              <div className="rounded-lg border border-white/10 bg-white/5 p-3">
+                <p>Current video: {currentVideoIndex + 1} / {videoList.length}</p>
+                <p>Events recorded: {sessionEvents.length}</p>
+                <p>Unavailable videos: {unavailableVideoIds.length}</p>
+              </div>
+              <div className="flex flex-wrap gap-2">
+                <Button size="sm" onClick={() => setHasStarted(true)}>
+                  Start
+                </Button>
+                <Button size="sm" variant="outline" onClick={completeSession}>
+                  Jump to Completion
+                </Button>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => {
+                    const currentVideo = videoList[currentVideoIndex];
+                    if (currentVideo) {
+                      handleVideoUnavailable(currentVideo.id);
+                    }
+                  }}
+                >
+                  Simulate Unavailable
+                </Button>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
     </div>
   );
 }
