@@ -139,14 +139,6 @@ function SessionPage() {
     saveInteraction(sessionId, newRecord).catch((err) => console.error("Failed to transmit interaction:", err));
   }, [addSessionEvent, participantId, sessionId, videoList]);
 
-  const handleNextVideo = () => {
-    if (currentVideoIndex < videoList.length - 1) {
-      setCurrentVideoIndex(currentVideoIndex + 1);
-    } else {
-      completeSession();
-    }
-  };
-
   const handlePrevVideo = () => {
     if (currentVideoIndex > 0) {
       setCurrentVideoIndex(currentVideoIndex - 1);
@@ -179,6 +171,10 @@ function SessionPage() {
     completeSession();
     return false;
   }, [completeSession, unavailableVideoIds, videoList]);
+
+  const handleNextVideo = useCallback(() => {
+    advanceToNextAvailable(currentVideoIndex);
+  }, [advanceToNextAvailable, currentVideoIndex]);
 
   const handleVideoUnavailable = useCallback((videoId: string) => {
     setUnavailableVideoIds((previous) => {
@@ -342,8 +338,7 @@ function SessionPage() {
           variant="secondary"
           size="icon"
           onClick={handleNextVideo}
-          disabled={currentVideoIndex >= videoList.length - 1}
-          className="h-12 w-12 rounded-full border border-white/20 bg-white/10 text-white shadow-lg backdrop-blur-md transition-transform duration-200 hover:scale-110 hover:bg-white/20 disabled:cursor-not-allowed disabled:opacity-40"
+          className="h-12 w-12 rounded-full border border-white/20 bg-white/10 text-white shadow-lg backdrop-blur-md transition-transform duration-200 hover:scale-110 hover:bg-white/20"
         >
           <ChevronDown className="h-7 w-7" />
         </Button>
