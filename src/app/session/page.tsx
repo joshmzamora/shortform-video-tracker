@@ -11,6 +11,12 @@ import { useToast } from '@/hooks/use-toast';
 import { Button } from '@/components/ui/button';
 
 const PRELOAD_VIDEO_COUNT = 2;
+const PREMOUNT_VIDEO_COUNT = 2;
+
+function extractTikTokVideoId(src: string) {
+  const match = src.match(/\/video\/(\d+)/);
+  return match?.[1] ?? src.trim();
+}
 
 export type SessionData = {
   videoId: string;
@@ -34,6 +40,7 @@ function SessionPage() {
   const [currentVideoIndex, setCurrentVideoIndex] = useState(0);
   const [videoList, setVideoList] = useState<Video[]>([]);
   const [sessionId, setSessionId] = useState('');
+  const [unavailableVideoIds, setUnavailableVideoIds] = useState<string[]>([]);
 
   const participantId = contextParticipantId || searchParams.get('participantId');
 
@@ -93,9 +100,12 @@ function SessionPage() {
 
     registerLink('dns-prefetch', 'https://www.tiktok.com');
     registerLink('preconnect', 'https://www.tiktok.com');
+    registerLink('preconnect', 'https://sf16-website.neutral.ttwstatic.com');
 
     videoList.slice(0, PRELOAD_VIDEO_COUNT).forEach((video) => {
-      registerLink('prefetch', `https://www.tiktok.com/player/v1/${video.src}?loop=1&controls=1&autoplay=1&mute=1`, 'document');
+      const videoId = extractTikTokVideoId(video.src);
+      if (!videoId) return;
+      registerLink('prefetch', `https://www.tiktok.com/player/v1/${videoId}?loop=1&controls=1&autoplay=1&mute=1`, 'document');
     });
 
     return () => {
@@ -136,6 +146,38 @@ function SessionPage() {
       setCurrentVideoIndex(currentVideoIndex - 1);
     }
   };
+
+  const advanceToNextAvailable = useCallback((startIndex: number) => {
+    for (let index = startIndex + 1; index < videoList.length; index += 1) {
+      if (!unavailableVideoIds.includes(videoList[index].id)) {
+        setCurrentVideoIndex(index);
+        return true;
+      }
+    }
+
+    setSessionState('completed');
+    return false;
+  }, [unavailableVideoIds, videoList]);
+
+  const handleVideoUnavailable = useCallback((videoId: string) => {
+    setUnavailableVideoIds((previous) => {
+      if (previous.includes(videoId)) return previous;
+      return [...previous, videoId];
+    });
+
+    const unavailableIndex = videoList.findIndex((video) => video.id === videoId);
+    if (unavailableIndex === -1) return;
+
+    toast({
+      title: "Video unavailable",
+      description: "That TikTok could not be loaded, so it was skipped.",
+      variant: "destructive",
+    });
+
+    if (unavailableIndex === currentVideoIndex) {
+      advanceToNextAvailable(unavailableIndex);
+    }
+  }, [advanceToNextAvailable, currentVideoIndex, toast, videoList]);
 
   if (sessionState === 'initializing') {
     return (
@@ -183,6 +225,8 @@ function SessionPage() {
               video={video}
               isActive={index === currentVideoIndex}
               onInteraction={handleInteraction}
+              shouldMount={index <= currentVideoIndex + PREMOUNT_VIDEO_COUNT}
+              onUnavailable={handleVideoUnavailable}
             />
           </div>
         ))}

@@ -13,28 +13,51 @@ type TikTokPlayerProps = {
   video: Video;
   isActive: boolean;
   onInteraction: (interaction: TikTokInteraction) => void;
+  shouldMount?: boolean;
+  onUnavailable?: (videoId: string, reason: string) => void;
 };
 
-export function TikTokPlayer({ video, isActive, onInteraction }: TikTokPlayerProps) {
+function extractTikTokVideoId(src: string) {
+  const match = src.match(/\/video\/(\d+)/);
+  return match?.[1] ?? src.trim();
+}
+
+export function TikTokPlayer({ video, isActive, onInteraction, shouldMount = false, onUnavailable }: TikTokPlayerProps) {
   const [error, setError] = useState<string | null>(null);
   const [isPlayerReady, setIsPlayerReady] = useState(false);
-  const [hasBeenActive, setHasBeenActive] = useState(isActive);
+  const [shouldRenderIframe, setShouldRenderIframe] = useState(isActive || shouldMount);
+  const reportedUnavailableRef = useRef(false);
 
   const iframeRef = useRef<HTMLIFrameElement>(null);
   const isActiveRef = useRef(isActive);
   const watchTimeStartRef = useRef<number | null>(null);
   const accumulatedWatchTimeRef = useRef(0);
   const videoDurationRef = useRef<number | null>(null);
+  const readyTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const videoId = extractTikTokVideoId(video.src);
 
   useEffect(() => {
-    if (isActive && !hasBeenActive) {
-      setHasBeenActive(true);
+    if (isActive || shouldMount) {
+      setShouldRenderIframe(true);
     }
-  }, [hasBeenActive, isActive]);
+  }, [isActive, shouldMount]);
 
   useEffect(() => {
     isActiveRef.current = isActive;
   }, [isActive]);
+
+  useEffect(() => {
+    setError(null);
+    setIsPlayerReady(false);
+    reportedUnavailableRef.current = false;
+  }, [video.id, video.src]);
+
+  const reportUnavailable = (reason: string) => {
+    if (reportedUnavailableRef.current) return;
+    reportedUnavailableRef.current = true;
+    setError('This TikTok video is unavailable.');
+    onUnavailable?.(video.id, reason);
+  };
 
   const sendPlayerCommand = (command: string, value?: number) => {
     if (!iframeRef.current?.contentWindow) return;
@@ -53,11 +76,16 @@ export function TikTokPlayer({ video, isActive, onInteraction }: TikTokPlayerPro
       if (!data || !data['x-tiktok-player']) return;
 
       switch (data.type) {
+        case 'onPlayerReady':
         case 'onReady':
           if (data.value && typeof data.value.duration === 'number') {
             videoDurationRef.current = data.value.duration * 1000;
           }
 
+          if (readyTimeoutRef.current) {
+            clearTimeout(readyTimeoutRef.current);
+            readyTimeoutRef.current = null;
+          }
           setIsPlayerReady(true);
 
           if (!isActiveRef.current) {
@@ -79,12 +107,33 @@ export function TikTokPlayer({ video, isActive, onInteraction }: TikTokPlayerPro
             watchTimeStartRef.current = null;
           }
           break;
+        case 'onPlayerError': {
+          const errorType = data.value?.errorType;
+          const errorCode = data.value?.errorCode;
+          reportUnavailable(`${errorType ?? 'PLAYER_ERROR'}:${errorCode ?? 'unknown'}`);
+          break;
+        }
       }
     };
 
     window.addEventListener('message', handlePlayerMessage);
     return () => window.removeEventListener('message', handlePlayerMessage);
   }, []);
+
+  useEffect(() => {
+    if (!shouldRenderIframe || isPlayerReady || error) return;
+
+    readyTimeoutRef.current = setTimeout(() => {
+      reportUnavailable('PLAYER_READY_TIMEOUT');
+    }, 7000);
+
+    return () => {
+      if (readyTimeoutRef.current) {
+        clearTimeout(readyTimeoutRef.current);
+        readyTimeoutRef.current = null;
+      }
+    };
+  }, [error, isPlayerReady, shouldRenderIframe]);
 
   useEffect(() => {
     if (!isPlayerReady) return;
@@ -138,7 +187,7 @@ export function TikTokPlayer({ video, isActive, onInteraction }: TikTokPlayerPro
     };
   }, [onInteraction, video.id]);
 
-  if (!video.src || video.src.includes('tiktok.com')) {
+  if (!videoId) {
     return (
       <div className="flex h-full w-full items-center justify-center bg-black">
         <div className="text-red-500">Invalid TikTok Video ID. Please update video data source.</div>
@@ -146,7 +195,7 @@ export function TikTokPlayer({ video, isActive, onInteraction }: TikTokPlayerPro
     );
   }
 
-  const iframeSrc = `https://www.tiktok.com/player/v1/${video.src}?loop=1&controls=1&autoplay=1&mute=1`;
+  const iframeSrc = `https://www.tiktok.com/player/v1/${videoId}?loop=1&controls=1&autoplay=1&mute=1`;
 
   return (
     <div className="flex h-full w-full items-center justify-center bg-black">
@@ -154,13 +203,18 @@ export function TikTokPlayer({ video, isActive, onInteraction }: TikTokPlayerPro
         <div className="text-red-500">{error}</div>
       ) : (
         <div className="relative aspect-[9/16] h-full w-full max-w-[calc(100vh*9/16)]">
-          {hasBeenActive && (
+          {!isPlayerReady && !error && shouldRenderIframe && (
+            <div className="absolute inset-0 flex items-center justify-center bg-black text-sm text-white/70">
+              Loading video...
+            </div>
+          )}
+          {shouldRenderIframe && (
             <iframe
               ref={iframeRef}
               src={iframeSrc}
               className="h-full w-full"
               allow="autoplay; encrypted-media;"
-              onError={() => setError('Failed to load TikTok video.')}
+              onError={() => reportUnavailable('IFRAME_LOAD_ERROR')}
             />
           )}
           <div className="absolute right-0 top-0 z-10 h-full w-16 bg-transparent" />
