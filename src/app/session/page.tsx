@@ -3,6 +3,7 @@
 import { Suspense, useCallback, useEffect, useRef, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { TikTokPlayer, type TikTokInteraction } from '@/components/tiktok-player';
+import { SessionTimer } from '@/components/session-timer';
 import { type Video } from '@/lib/videos';
 import { getVideos, saveInteraction } from './actions';
 import { useSession } from '@/lib/session-context';
@@ -10,6 +11,7 @@ import { Loader2, PartyPopper, ServerCrash, ChevronUp, ChevronDown, ShieldAlert 
 import { useToast } from '@/hooks/use-toast';
 import { Button } from '@/components/ui/button';
 
+const SESSION_DURATION_SECONDS = 600;
 const PRELOAD_VIDEO_COUNT = 2;
 const PREMOUNT_VIDEO_COUNT = 2;
 
@@ -33,7 +35,7 @@ type SessionState = 'initializing' | 'running' | 'completed' | 'invalidated' | '
 function SessionPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const { participantId: contextParticipantId, addSessionEvent, clearSession } = useSession();
+  const { participantId: contextParticipantId, addSessionEvent, clearSession, sessionEvents } = useSession();
   const { toast } = useToast();
 
   const [sessionState, setSessionState] = useState<SessionState>('initializing');
@@ -42,7 +44,9 @@ function SessionPage() {
   const [sessionId, setSessionId] = useState('');
   const [unavailableVideoIds, setUnavailableVideoIds] = useState<string[]>([]);
   const [invalidationReason, setInvalidationReason] = useState('');
+  const [showResults, setShowResults] = useState(false);
   const invalidationHandledRef = useRef(false);
+  const completionHandledRef = useRef(false);
 
   const participantId = contextParticipantId || searchParams.get('participantId');
 
@@ -139,7 +143,7 @@ function SessionPage() {
     if (currentVideoIndex < videoList.length - 1) {
       setCurrentVideoIndex(currentVideoIndex + 1);
     } else {
-      setSessionState('completed');
+      completeSession();
     }
   };
 
@@ -157,6 +161,13 @@ function SessionPage() {
     setSessionState('invalidated');
   }, [clearSession]);
 
+  const completeSession = useCallback(() => {
+    if (completionHandledRef.current || invalidationHandledRef.current) return;
+    completionHandledRef.current = true;
+    setShowResults(false);
+    setSessionState('completed');
+  }, []);
+
   const advanceToNextAvailable = useCallback((startIndex: number) => {
     for (let index = startIndex + 1; index < videoList.length; index += 1) {
       if (!unavailableVideoIds.includes(videoList[index].id)) {
@@ -165,9 +176,9 @@ function SessionPage() {
       }
     }
 
-    setSessionState('completed');
+    completeSession();
     return false;
-  }, [unavailableVideoIds, videoList]);
+  }, [completeSession, unavailableVideoIds, videoList]);
 
   const handleVideoUnavailable = useCallback((videoId: string) => {
     setUnavailableVideoIds((previous) => {
@@ -240,12 +251,37 @@ function SessionPage() {
 
   if (sessionState === 'completed') {
     return (
-      <div className="flex h-screen w-screen items-center justify-center bg-background">
-        <div className="text-center">
-          <PartyPopper className="mx-auto h-12 w-12 text-primary" />
-          <h1 className="mt-4 text-2xl font-bold">Session Complete!</h1>
-          <p className="mt-2 text-muted-foreground">Thank you for your participation.</p>
-          <Button onClick={() => { clearSession(); router.push('/'); }} className="mt-6">Go Home</Button>
+      <div className="flex min-h-screen items-center justify-center bg-background p-4">
+        <div className="w-full max-w-3xl rounded-xl border bg-card p-8 shadow-lg">
+          <div className="text-center">
+            <PartyPopper className="mx-auto h-12 w-12 text-primary" />
+            <h1 className="mt-4 text-2xl font-bold">Results Submitted</h1>
+            <p className="mt-3 text-muted-foreground">
+              Joshua Zamora has finished conducting AP Research, but thank you for completing the experiment and testing this out.
+            </p>
+          </div>
+
+          <div className="mt-6 flex flex-col gap-3 sm:flex-row">
+            <Button className="flex-1" onClick={() => { clearSession(); router.push('/'); }}>
+              Return Home
+            </Button>
+            <Button variant="outline" className="flex-1" onClick={() => setShowResults((prev) => !prev)}>
+              {showResults ? 'Hide Results' : 'View Your Results'}
+            </Button>
+          </div>
+
+          {showResults && (
+            <div className="mt-6 rounded-lg border bg-muted/40 p-4 text-left">
+              <h2 className="font-semibold text-foreground">Experiment Interaction Log</h2>
+              <div className="mt-3 space-y-2 text-sm text-muted-foreground">
+                <p><strong className="text-foreground">Participant ID:</strong> {participantId}</p>
+                <p><strong className="text-foreground">Recorded events:</strong> {sessionEvents.length}</p>
+              </div>
+              <div className="mt-4 max-h-80 overflow-auto rounded-md bg-background p-3">
+                <pre className="text-xs whitespace-pre-wrap break-words">{JSON.stringify(sessionEvents, null, 2)}</pre>
+              </div>
+            </div>
+          )}
         </div>
       </div>
     );
@@ -270,6 +306,11 @@ function SessionPage() {
 
   return (
     <div className="relative h-screen w-screen overflow-hidden bg-black">
+      <SessionTimer
+        duration={SESSION_DURATION_SECONDS}
+        onComplete={completeSession}
+        className="absolute left-4 top-4 z-20"
+      />
       <div
         className="h-full w-full transition-transform duration-500 ease-in-out"
         style={{ transform: `translateY(-${currentVideoIndex * 100}vh)` }}

@@ -16,6 +16,14 @@ interface ConsentData {
 interface QuestionnaireData {
   participantId: string;
   answers: { [key: string]: string };
+  screenTime: {
+    tiktok: string;
+    instagram: string;
+    youtube: string;
+    snapchat: string;
+  };
+  shortFormPercentage: number;
+  screenTimeScreenshot?: string;
   timestamp: string;
 }
 

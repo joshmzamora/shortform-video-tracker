@@ -87,8 +87,8 @@ export default function ConsentPage() {
         });
       } else {
         toast({
-          title: "Consent Recorded",
-          description: "Data securely transmitted to server.",
+          title: "Results Submitted",
+          description: "Joshua Zamora has finished conducting AP Research, but thank you for submitting and testing this out.",
         });
       }
 
@@ -104,7 +104,7 @@ export default function ConsentPage() {
       <AlertDialog open={showSuccessDialog} onOpenChange={setShowSuccessDialog}>
         <AlertDialogContent className="max-w-lg">
           <AlertDialogHeader>
-            <AlertDialogTitle className="text-2xl">Consent Submitted!</AlertDialogTitle>
+            <AlertDialogTitle className="text-2xl">Results Submitted</AlertDialogTitle>
             <AlertDialogDescription className="space-y-4 pt-4 text-left">
               <div className="bg-muted p-4 rounded-md border">
                 <p className="font-semibold text-foreground">Your Participant ID is: <span className="font-bold text-primary text-lg tracking-wider">{participantId}</span></p>
@@ -112,10 +112,8 @@ export default function ConsentPage() {
               </div>
 
               <div className="space-y-2">
-                <p>You can now proceed to the questionnaire or close this window and continue later.</p>
-                <p className="text-sm text-muted-foreground pt-2">
-                  <strong>Reminder:</strong> The experiment is scheduled to begin in the next <strong>1-2 weeks</strong>. The researcher, Joshua Zamora, will notify all participants when it opens.
-                </p>
+                <p>Joshua Zamora has finished conducting AP Research, but thank you for submitting and testing this out.</p>
+                <p className="text-sm text-muted-foreground pt-2">You can still continue to the questionnaire or close this window and come back later.</p>
               </div>
             </AlertDialogDescription>
           </AlertDialogHeader>

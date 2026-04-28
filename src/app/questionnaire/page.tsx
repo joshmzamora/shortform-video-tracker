@@ -12,7 +12,6 @@ import { saveQuestionnaireData } from './actions';
 import { useSession } from '@/lib/session-context';
 import { Loader2, PartyPopper, Upload, Smartphone } from 'lucide-react';
 import { Separator } from '@/components/ui/separator';
-import { Checkbox } from '@/components/ui/checkbox';
 import { useSearchParams, useRouter } from 'next/navigation';
 
 type Question = {
@@ -54,7 +53,7 @@ function QuestionnaireContent() {
   const { toast } = useToast();
   const searchParams = useSearchParams();
   const router = useRouter();
-  const { participantId: contextParticipantId, setQuestionnaire } = useSession();
+  const { participantId: contextParticipantId, questionnaire, setQuestionnaire } = useSession();
 
   const [participantId, setParticipantId] = useState('');
   const [answers, setAnswers] = useState(() => {
@@ -73,6 +72,7 @@ function QuestionnaireContent() {
   const [shortFormPercentage, setShortFormPercentage] = useState([50]);
   const [screenshot, setScreenshot] = useState<string | null>(null);
   const [submissionState, setSubmissionState] = useState<'idle' | 'submitting' | 'submitted'>('idle');
+  const [showResults, setShowResults] = useState(false);
 
   useEffect(() => {
     // Prefer Context ID if available, otherwise URL param
@@ -159,30 +159,54 @@ function QuestionnaireContent() {
         description: "Server unavailable. Data downloaded securely for manual transfer.",
         variant: "destructive"
       });
-    } else {
-      toast({
-        title: "Questionnaire Submitted",
-        description: "Responses securely transmitted.",
-      });
-    }
+      } else {
+        toast({
+          title: "Results Submitted",
+          description: "Joshua Zamora has finished conducting AP Research, but thank you for submitting and testing this out.",
+        });
+      }
 
     setSubmissionState('submitted');
-    setTimeout(() => {
-      router.push(`/session?participantId=${encodeURIComponent(participantId.trim())}`);
-    }, 2000);
   };
 
   if (submissionState === 'submitted') {
     return (
       <main className="flex min-h-screen items-center justify-center bg-background p-4">
-        <Card className="w-full max-w-lg text-center shadow-lg">
+        <Card className="w-full max-w-3xl shadow-lg">
           <CardHeader>
-            <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-accent/50">
+            <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-accent/50 text-center">
               <PartyPopper className="h-8 w-8 text-accent-foreground" />
             </div>
-            <CardTitle className="mt-4 text-2xl font-headline">Thank You!</CardTitle>
-            <CardDescription>Your responses have been recorded. Redirecting to the experiment...</CardDescription>
+            <CardTitle className="mt-4 text-2xl font-headline text-center">Results Submitted</CardTitle>
+            <CardDescription className="text-center">
+              Joshua Zamora has finished conducting AP Research, but thank you for submitting and testing this out.
+            </CardDescription>
           </CardHeader>
+          <CardContent className="space-y-6">
+            <div className="flex flex-col gap-3 sm:flex-row">
+              <Button className="flex-1" onClick={() => router.push(`/session?participantId=${encodeURIComponent(participantId.trim())}`)}>
+                Continue to Experiment
+              </Button>
+              <Button variant="outline" className="flex-1" onClick={() => setShowResults((prev) => !prev)}>
+                {showResults ? 'Hide Submitted Results' : 'View Submitted Results'}
+              </Button>
+            </div>
+
+            {showResults && questionnaire && (
+              <div className="rounded-lg border bg-muted/40 p-4 text-left">
+                <h3 className="font-semibold text-foreground">Questionnaire Summary</h3>
+                <div className="mt-4 space-y-3 text-sm">
+                  <p><strong>Participant ID:</strong> {questionnaire.participantId}</p>
+                  <p><strong>Screen Time:</strong> TikTok {questionnaire.screenTime.tiktok}, Instagram {questionnaire.screenTime.instagram}, YouTube {questionnaire.screenTime.youtube}, Snapchat {questionnaire.screenTime.snapchat}</p>
+                  <p><strong>Short-form video estimate:</strong> {questionnaire.shortFormPercentage}%</p>
+                  <p><strong>Screenshot attached:</strong> {questionnaire.screenTimeScreenshot ? 'Yes' : 'No'}</p>
+                </div>
+                <div className="mt-4 max-h-80 overflow-auto rounded-md bg-background p-3">
+                  <pre className="text-xs whitespace-pre-wrap break-words">{JSON.stringify(questionnaire.answers, null, 2)}</pre>
+                </div>
+              </div>
+            )}
+          </CardContent>
         </Card>
       </main>
     );
