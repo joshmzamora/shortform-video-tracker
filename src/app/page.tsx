@@ -4,7 +4,7 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { FileText, PlaySquare, ListChecks, Loader2 } from 'lucide-react';
+import { CirclePlay, ClipboardList, FileCheck, Loader2 } from 'lucide-react';
 
 export default function Home() {
   const router = useRouter();
@@ -25,16 +25,16 @@ export default function Home() {
         </CardHeader>
         <CardContent className="flex flex-col gap-4 pt-4">
           <Button size="lg" variant="outline" onClick={() => handleNavigation('/consent')} disabled={!!loading}>
-            {loading === '/consent' ? <Loader2 className="mr-2 animate-spin" /> : <FileText className="mr-2" />}
+            {loading === '/consent' ? <Loader2 className="mr-2 animate-spin" /> : <FileCheck className="mr-2" />}
             {loading === '/consent' ? 'Loading...' : 'Consent Form'}
           </Button>
           <Button size="lg" variant="outline" onClick={() => handleNavigation('/questionnaire')} disabled={!!loading}>
-            {loading === '/questionnaire' ? <Loader2 className="mr-2 animate-spin" /> : <ListChecks className="mr-2" />}
+            {loading === '/questionnaire' ? <Loader2 className="mr-2 animate-spin" /> : <ClipboardList className="mr-2" />}
             {loading === '/questionnaire' ? 'Loading...' : 'Questionnaire'}
           </Button>
-          <Button size="lg" variant="outline" onClick={() => handleNavigation('/session')} disabled={!!loading}>
-            {loading === '/session' ? <Loader2 className="mr-2 animate-spin" /> : <PlaySquare className="mr-2" />}
-            {loading === '/session' ? 'Loading...' : 'Experiment'}
+          <Button size="lg" variant="outline" onClick={() => handleNavigation('/start')} disabled={!!loading}>
+            {loading === '/start' ? <Loader2 className="mr-2 animate-spin" /> : <CirclePlay className="mr-2" />}
+            {loading === '/start' ? 'Loading...' : 'Experiment'}
           </Button>
         </CardContent>
       </Card>

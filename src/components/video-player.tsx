@@ -204,6 +204,7 @@ export const VideoPlayer = forwardRef<VideoPlayerRef, VideoPlayerProps>(({ video
           src={video.src}
           className="h-full w-full object-contain"
           loop
+          preload="auto"
           playsInline
           muted={false}
           onPlay={onPlay}

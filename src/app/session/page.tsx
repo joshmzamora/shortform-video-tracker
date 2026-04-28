@@ -18,6 +18,7 @@ import { Textarea } from '@/components/ui/textarea';
 
 const SESSION_DURATION_SECONDS = 600; // 10 minutes
 const SKIP_THRESHOLD_MS = 3000; // 3 seconds
+const PRELOAD_VIDEO_COUNT = 2;
 
 export type SessionData = VideoInteraction & {
   participantId: string;
@@ -54,7 +55,7 @@ function SessionPage() {
   useEffect(() => {
     const initSession = async () => {
       if (!participantId) {
-        router.replace('/');
+        router.replace('/start');
         return;
       }
 
@@ -87,6 +88,49 @@ function SessionPage() {
 
     initSession();
   }, [participantId, router, toast]);
+
+  useEffect(() => {
+    if (videoList.length === 0 || typeof document === 'undefined') return;
+
+    const head = document.head;
+    const links: HTMLLinkElement[] = [];
+    const preloadTargets = videoList.slice(0, PRELOAD_VIDEO_COUNT);
+
+    const registerLink = (rel: string, href: string, as?: string) => {
+      if (head.querySelector(`link[rel="${rel}"][href="${href}"]`)) return;
+
+      const link = document.createElement('link');
+      link.rel = rel;
+      link.href = href;
+      if (as) {
+        link.as = as;
+      }
+      head.appendChild(link);
+      links.push(link);
+    };
+
+    registerLink('dns-prefetch', 'https://www.tiktok.com');
+    registerLink('preconnect', 'https://www.tiktok.com');
+
+    preloadTargets.forEach((video) => {
+      if (video.src.includes('tiktok.com')) {
+        const embedId = video.src.split('/').pop();
+        if (embedId) {
+          registerLink('prefetch', `https://www.tiktok.com/embed/v3/${embedId}?autoplay=1`, 'document');
+        }
+      } else {
+        registerLink('preload', video.src, 'video');
+      }
+    });
+
+    return () => {
+      links.forEach((link) => {
+        if (link.parentNode) {
+          link.parentNode.removeChild(link);
+        }
+      });
+    };
+  }, [videoList]);
 
   const handleInteraction = useCallback((interaction: Omit<VideoInteraction, 'interactionType'> & { interactionType?: VideoInteraction['interactionType'] }) => {
     const video = videoList.find(v => v.id === interaction.videoId);
