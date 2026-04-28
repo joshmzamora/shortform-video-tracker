@@ -64,11 +64,11 @@ export default function StartPage() {
                 <AlertDialogTitle>Experiment Instructions</AlertDialogTitle>
                 <AlertDialogDescription asChild>
                   <div className="space-y-3 pt-2 text-sm text-foreground">
-                    <p><strong>Experiment Duration:</strong> The experiment is expected to last approximately 10 minutes.</p>
-                    <p><strong>Interface Restrictions:</strong> Standard TikTok interactions (like, comment, share) are disabled.</p>
-                    <p><strong>Navigation:</strong> Please use the up and down arrow buttons on the side to move between videos.</p>
-                    <p><strong>Data Anonymity:</strong> All data collected is completely anonymous and cannot be linked to you.</p>
-                    <p><strong>Your Task:</strong> Please engage with the content as naturally as you would on the actual platform.</p>
+                    <p>This part should take about 10 minutes.</p>
+                    <p>The like, comment, and share buttons are turned off during the session.</p>
+                    <p>Use the arrows on the side of the screen to go up or down.</p>
+                    <p>Your responses are anonymous and are not tied back to you.</p>
+                    <p>Watch and move through the videos the way you normally would.</p>
                   </div>
                 </AlertDialogDescription>
               </AlertDialogHeader>
