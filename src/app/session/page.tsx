@@ -1,12 +1,12 @@
 "use client";
 
-import { Suspense, useCallback, useEffect, useState } from 'react';
+import { Suspense, useCallback, useEffect, useRef, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { TikTokPlayer, type TikTokInteraction } from '@/components/tiktok-player';
 import { type Video } from '@/lib/videos';
 import { getVideos, saveInteraction } from './actions';
 import { useSession } from '@/lib/session-context';
-import { Loader2, PartyPopper, ServerCrash, ChevronUp, ChevronDown } from 'lucide-react';
+import { Loader2, PartyPopper, ServerCrash, ChevronUp, ChevronDown, ShieldAlert } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { Button } from '@/components/ui/button';
 
@@ -28,7 +28,7 @@ export type SessionData = {
   timestamp: string;
 };
 
-type SessionState = 'initializing' | 'running' | 'completed' | 'error';
+type SessionState = 'initializing' | 'running' | 'completed' | 'invalidated' | 'error';
 
 function SessionPage() {
   const router = useRouter();
@@ -41,6 +41,8 @@ function SessionPage() {
   const [videoList, setVideoList] = useState<Video[]>([]);
   const [sessionId, setSessionId] = useState('');
   const [unavailableVideoIds, setUnavailableVideoIds] = useState<string[]>([]);
+  const [invalidationReason, setInvalidationReason] = useState('');
+  const invalidationHandledRef = useRef(false);
 
   const participantId = contextParticipantId || searchParams.get('participantId');
 
@@ -147,6 +149,14 @@ function SessionPage() {
     }
   };
 
+  const invalidateSession = useCallback((reason: string) => {
+    if (invalidationHandledRef.current) return;
+    invalidationHandledRef.current = true;
+    setInvalidationReason(reason);
+    clearSession();
+    setSessionState('invalidated');
+  }, [clearSession]);
+
   const advanceToNextAvailable = useCallback((startIndex: number) => {
     for (let index = startIndex + 1; index < videoList.length; index += 1) {
       if (!unavailableVideoIds.includes(videoList[index].id)) {
@@ -179,6 +189,34 @@ function SessionPage() {
     }
   }, [advanceToNextAvailable, currentVideoIndex, toast, videoList]);
 
+  useEffect(() => {
+    if (sessionState !== 'running') return;
+
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'hidden') {
+        invalidateSession('The experiment was invalidated because you left the tab.');
+      }
+    };
+
+    const handleBlur = () => {
+      invalidateSession('The experiment was invalidated because you switched to another window or app.');
+    };
+
+    const handlePageHide = () => {
+      invalidateSession('The experiment was invalidated because you left the experiment page.');
+    };
+
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    window.addEventListener('blur', handleBlur);
+    window.addEventListener('pagehide', handlePageHide);
+
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+      window.removeEventListener('blur', handleBlur);
+      window.removeEventListener('pagehide', handlePageHide);
+    };
+  }, [invalidateSession, sessionState]);
+
   if (sessionState === 'initializing') {
     return (
       <div className="flex h-screen w-screen items-center justify-center bg-background">
@@ -208,6 +246,23 @@ function SessionPage() {
           <h1 className="mt-4 text-2xl font-bold">Session Complete!</h1>
           <p className="mt-2 text-muted-foreground">Thank you for your participation.</p>
           <Button onClick={() => { clearSession(); router.push('/'); }} className="mt-6">Go Home</Button>
+        </div>
+      </div>
+    );
+  }
+
+  if (sessionState === 'invalidated') {
+    return (
+      <div className="flex h-screen w-screen items-center justify-center bg-background p-4">
+        <div className="w-full max-w-lg rounded-xl border bg-card p-8 text-center shadow-lg">
+          <ShieldAlert className="mx-auto h-12 w-12 text-destructive" />
+          <h1 className="mt-4 text-2xl font-bold">Experiment Invalidated</h1>
+          <p className="mt-3 text-muted-foreground">
+            {invalidationReason || 'This session is no longer valid because the experiment was interrupted.'}
+          </p>
+          <p className="mt-3 text-sm text-muted-foreground">
+            Please contact the researcher before trying again.
+          </p>
         </div>
       </div>
     );

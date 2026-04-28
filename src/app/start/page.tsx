@@ -64,6 +64,13 @@ export default function StartPage() {
                 <AlertDialogTitle>Experiment Instructions</AlertDialogTitle>
                 <AlertDialogDescription asChild>
                   <div className="space-y-3 pt-2 text-sm text-foreground">
+                    <div className="rounded-lg border border-destructive/30 bg-destructive/10 p-3 text-left">
+                      <p className="font-semibold text-destructive">Important</p>
+                      <p className="mt-1 text-sm text-foreground">
+                        If you leave this tab, switch windows or apps, or try to open TikTok or any other external page,
+                        the experiment will be invalidated right away.
+                      </p>
+                    </div>
                     <p>This part should take about 10 minutes.</p>
                     <p>The like, comment, and share buttons are turned off during the session.</p>
                     <p>Use the arrows on the side of the screen to go up or down.</p>

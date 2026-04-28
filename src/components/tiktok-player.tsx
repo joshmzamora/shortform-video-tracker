@@ -217,7 +217,13 @@ export function TikTokPlayer({ video, isActive, onInteraction, shouldMount = fal
               onError={() => reportUnavailable('IFRAME_LOAD_ERROR')}
             />
           )}
-          <div className="absolute right-0 top-0 z-10 h-full w-16 bg-transparent" />
+          <div
+            className="absolute inset-0 z-10 bg-transparent"
+            onClick={(event) => event.preventDefault()}
+            onMouseDown={(event) => event.preventDefault()}
+            onPointerDown={(event) => event.preventDefault()}
+            onTouchStart={(event) => event.preventDefault()}
+          />
         </div>
       )}
     </div>
