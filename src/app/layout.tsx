@@ -5,6 +5,11 @@ import './globals.css';
 export const metadata: Metadata = {
   title: 'AP Research SFV Study',
   description: 'An AP Research user engagement study platform for short-form video.',
+  icons: {
+    icon: '/icon.svg',
+    shortcut: '/icon.svg',
+    apple: '/icon.svg',
+  },
 };
 
 import { SessionProvider } from '@/lib/session-context';
