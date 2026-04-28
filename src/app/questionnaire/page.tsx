@@ -49,6 +49,34 @@ const likertOptions = [
   { id: '5', label: 'Strongly Agree' },
 ];
 
+function parseDurationToMinutes(value: string) {
+  const normalized = value.toLowerCase().trim();
+  if (!normalized) return 0;
+
+  const hoursMatch = normalized.match(/(\d+(?:\.\d+)?)\s*h/);
+  const minutesMatch = normalized.match(/(\d+(?:\.\d+)?)\s*m/);
+
+  const hours = hoursMatch ? Number(hoursMatch[1]) : 0;
+  const minutes = minutesMatch ? Number(minutesMatch[1]) : 0;
+
+  if (!hoursMatch && !minutesMatch) {
+    const numericOnly = Number(normalized);
+    return Number.isNaN(numericOnly) ? 0 : numericOnly;
+  }
+
+  return Math.round(hours * 60 + minutes);
+}
+
+function formatMinutes(totalMinutes: number) {
+  const safeMinutes = Math.max(0, Math.round(totalMinutes));
+  const hours = Math.floor(safeMinutes / 60);
+  const minutes = safeMinutes % 60;
+
+  if (hours === 0) return `${minutes}m`;
+  if (minutes === 0) return `${hours}h`;
+  return `${hours}h ${minutes}m`;
+}
+
 function QuestionnaireContent() {
   const { toast } = useToast();
   const searchParams = useSearchParams();
@@ -73,6 +101,11 @@ function QuestionnaireContent() {
   const [screenshot, setScreenshot] = useState<string | null>(null);
   const [submissionState, setSubmissionState] = useState<'idle' | 'submitting' | 'submitted'>('idle');
   const [showResults, setShowResults] = useState(false);
+
+  const totalScreenTimeMinutes = Object.values(screenTime).reduce((sum, value) => sum + parseDurationToMinutes(value), 0);
+  const estimatedShortFormMinutes = Math.round(totalScreenTimeMinutes * (shortFormPercentage[0] / 100));
+  const rangeMinMinutes = Math.round(totalScreenTimeMinutes * (Math.max(0, shortFormPercentage[0] - 2.5) / 100));
+  const rangeMaxMinutes = Math.round(totalScreenTimeMinutes * (Math.min(100, shortFormPercentage[0] + 2.5) / 100));
 
   useEffect(() => {
     // Prefer Context ID if available, otherwise URL param
@@ -153,15 +186,9 @@ function QuestionnaireContent() {
       a.click();
       document.body.removeChild(a);
       URL.revokeObjectURL(url);
-
+    } else {
       toast({
-        title: "Transmission Error - Manual Backup",
-        description: "Server unavailable. Data downloaded securely for manual transfer.",
-        variant: "destructive"
-      });
-      } else {
-        toast({
-          title: "Results Submitted",
+        title: "Results Submitted",
           description: "Joshua Zamora has finished conducting AP Research, but thank you for submitting and testing this out.",
         });
       }
@@ -198,7 +225,8 @@ function QuestionnaireContent() {
                 <div className="mt-4 space-y-3 text-sm">
                   <p><strong>Participant ID:</strong> {questionnaire.participantId}</p>
                   <p><strong>Screen Time:</strong> TikTok {questionnaire.screenTime.tiktok}, Instagram {questionnaire.screenTime.instagram}, YouTube {questionnaire.screenTime.youtube}, Snapchat {questionnaire.screenTime.snapchat}</p>
-                  <p><strong>Short-form video estimate:</strong> {questionnaire.shortFormPercentage}%</p>
+                  <p><strong>Estimated short-form video time:</strong> about {formatMinutes(estimatedShortFormMinutes)} per week</p>
+                  <p><strong>Estimated range:</strong> about {formatMinutes(rangeMinMinutes)} to {formatMinutes(rangeMaxMinutes)} per week</p>
                   <p><strong>Screenshot attached:</strong> {questionnaire.screenTimeScreenshot ? 'Yes' : 'No'}</p>
                 </div>
                 <div className="mt-4 max-h-80 overflow-auto rounded-md bg-background p-3">
